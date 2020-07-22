@@ -194,6 +194,16 @@ impl Vec3 {
         }
         self.clone() / len
     }
+    pub fn color(&self) -> [u8; 3] {
+        [
+            (255.0 * self.x) as u8,
+            (255.0 * self.y) as u8,
+            (255.0 * self.z) as u8,
+        ]
+    }
+    pub fn lerp(one: Self, other: Self, t: f64) -> Self {
+        one * t + other * (1.0 - t)
+    }
 }
 
 //Hiweibolu End
