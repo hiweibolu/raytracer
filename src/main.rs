@@ -1,13 +1,66 @@
 mod camera;
+mod hit;
 mod ray;
 #[allow(clippy::float_cmp)]
 mod vec3;
+mod world;
 use image::{ImageBuffer, RgbImage};
 use indicatif::ProgressBar;
 
 pub use camera::Camera;
+pub use hit::*;
 pub use ray::Ray;
 pub use vec3::Vec3;
+pub use world::World;
+
+fn ray_color(ra: Ray, wor: &World) -> Vec3 {
+    for i in wor.hitlist.iter() {
+        let opt = i.hit(&ra);
+        if let hit::Option::Some(hit_result) = opt {
+            return hit_result.color;
+        }
+    }
+    let unit = ra.direction.unit();
+    let t = (unit.y + 1.0) * 0.5;
+    Vec3::lerp(Vec3::new(1.0, 1.0, 1.0), Vec3::new(0.5, 0.7, 1.0), t)
+}
+
+fn oneweekend(cam: &Camera) {
+    let mut img: RgbImage = ImageBuffer::new(cam.width, cam.height);
+    let bar = ProgressBar::new(cam.width as u64);
+
+    let wor = World {
+        hitlist: vec![Box::new(Sphere {
+            center: Vec3::new(0.0, 0.0, -2.0),
+            radius: 0.5,
+        })],
+    };
+
+    for x in 0..cam.width {
+        for y in 0..cam.height {
+            let u = (x as f64) / ((cam.width - 1) as f64);
+            let v = (y as f64) / ((cam.height - 1) as f64);
+            let ra = Ray {
+                origin: cam.position.clone(),
+                direction: cam.lower_left_corner() + cam.horizontal() * u + cam.vertical() * v
+                    - cam.position.clone(),
+            };
+
+            let pixel = img.get_pixel_mut(x, y);
+            let color = ray_color(ra, &wor);
+            *pixel = image::Rgb(color.color());
+        }
+        bar.inc(1);
+    }
+
+    img.save("output/oneweekend.png").unwrap();
+    bar.finish();
+}
+
+fn main() {
+    let cam = Camera::new(16.0 / 9.0, 1280, Vec3::zero(), 4.0, 1.0);
+    oneweekend(&cam);
+}
 
 /*
 fn test() {
@@ -45,13 +98,6 @@ fn setu() {
 
     img.save("output/setu.png").unwrap();
     bar.finish();
-}
-*/
-
-fn ray_color(ra: Ray) -> Vec3 {
-    let unit = ra.direction.unit();
-    let t = (unit.y + 1.0) * 0.5;
-    Vec3::lerp(Vec3::new(1.0, 1.0, 1.0), Vec3::new(0.5, 0.7, 1.0), t)
 }
 
 fn firework() {
@@ -97,34 +143,4 @@ fn firework() {
     img.save("output/firework.png").unwrap();
     bar.finish();
 }
-
-fn oneweekend(cam: &Camera) {
-    let mut img: RgbImage = ImageBuffer::new(cam.width, cam.height);
-    let bar = ProgressBar::new(cam.width as u64);
-
-    for x in 0..cam.width {
-        for y in 0..cam.height {
-            let u = (x as f64) / ((cam.width - 1) as f64);
-            let v = (y as f64) / ((cam.height - 1) as f64);
-            let ra = Ray {
-                origin: cam.position.clone(),
-                direction: cam.lower_left_corner() + cam.horizontal() * u + cam.vertical() * v
-                    - cam.position.clone(),
-            };
-
-            let pixel = img.get_pixel_mut(x, y);
-            let color = ray_color(ra);
-            *pixel = image::Rgb(color.color());
-        }
-        bar.inc(1);
-    }
-
-    img.save("output/oneweekend.png").unwrap();
-    bar.finish();
-}
-
-fn main() {
-    let cam = Camera::new(16.0 / 9.0, 1280, Vec3::zero(), 4.0, 1.0);
-    firework();
-    oneweekend(&cam);
-}
+*/
