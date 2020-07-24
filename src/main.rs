@@ -30,10 +30,16 @@ fn oneweekend(cam: &Camera) {
     let bar = ProgressBar::new(cam.width as u64);
 
     let wor = World {
-        hitlist: vec![Box::new(Sphere {
-            center: Vec3::new(0.0, 0.0, -2.0),
-            radius: 0.5,
-        })],
+        hitlist: vec![
+            Box::new(Sphere {
+                center: Vec3::new(0.0, 0.0, -2.0),
+                radius: 0.5,
+            }),
+            Box::new(Sphere {
+                center: Vec3::new(0.0, -100.5, -2.0),
+                radius: 100.0,
+            }),
+        ],
     };
 
     for x in 0..cam.width {
