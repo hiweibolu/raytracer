@@ -1,3 +1,6 @@
+pub use crate::random::*;
+use std::f64::consts::PI;
+
 use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub, SubAssign};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -194,6 +197,13 @@ impl Vec3 {
         }
         self.clone() / len
     }
+    pub fn sqrt(&self) -> Self {
+        Self {
+            x: self.x.sqrt(),
+            y: self.y.sqrt(),
+            z: self.z.sqrt(),
+        }
+    }
     pub fn color(&self) -> [u8; 3] {
         [
             (255.0 * self.x) as u8,
@@ -203,6 +213,30 @@ impl Vec3 {
     }
     pub fn lerp(one: Self, other: Self, t: f64) -> Self {
         one * t + other * (1.0 - t)
+    }
+    pub fn random() -> Self {
+        Self::new(random_double(), random_double(), random_double())
+    }
+    pub fn random_range(min: f64, max: f64) -> Self {
+        Self::new(
+            random_double_range(min, max),
+            random_double_range(min, max),
+            random_double_range(min, max),
+        )
+    }
+    pub fn random_in_unit_sphere() -> Self {
+        loop {
+            let p = Self::random_range(-1.0, 1.0);
+            if p.squared_length() < 1.0 {
+                break p;
+            }
+        }
+    }
+    pub fn random_unit() -> Self {
+        let a = random_double_range(0.0, PI * 2.0);
+        let z = random_double_range(-1.0, 1.0);
+        let r = (1.0 - z * z).sqrt();
+        Self::new(r * a.cos(), r * a.sin(), z)
     }
 }
 
