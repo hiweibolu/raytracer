@@ -1,3 +1,4 @@
+pub use crate::ray::Ray;
 pub use crate::vec3::Vec3;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -42,5 +43,12 @@ impl Camera {
             - self.horizontal() * 0.5
             - self.vertical() * 0.5
             - Vec3::new(0.0, 0.0, self.focal_length)
+    }
+    pub fn get_ray(&self, u: f64, v: f64) -> Ray {
+        Ray {
+            origin: self.position.clone(),
+            direction: self.lower_left_corner() + self.horizontal() * u + self.vertical() * v
+                - self.position.clone(),
+        }
     }
 }

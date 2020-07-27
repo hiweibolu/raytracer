@@ -4,6 +4,7 @@ mod ray;
 #[allow(clippy::float_cmp)]
 mod vec3;
 mod world;
+use core::f64::INFINITY;
 use image::{ImageBuffer, RgbImage};
 use indicatif::ProgressBar;
 
@@ -13,12 +14,12 @@ pub use ray::Ray;
 pub use vec3::Vec3;
 pub use world::World;
 
+const ANTIALIASING: i32 = 10;
+
 fn ray_color(ra: Ray, wor: &World) -> Vec3 {
-    for i in wor.hitlist.iter() {
-        let opt = i.hit(&ra);
-        if let hit::Option::Some(hit_result) = opt {
-            return hit_result.color;
-        }
+    let opt: Option<HitResult> = wor.hit(&ra, 0.0, INFINITY);
+    if let Option::Some(hit_result) = opt {
+        return (hit_result.normal + Vec3::ones()) * 0.5;
     }
     let unit = ra.direction.unit();
     let t = (unit.y + 1.0) * 0.5;
@@ -42,18 +43,26 @@ fn oneweekend(cam: &Camera) {
         ],
     };
 
+    let length_per_step = [
+        1.0 / ((ANTIALIASING + 1) as f64),
+        1.0 / ((ANTIALIASING + 1) as f64),
+    ];
+    let sample_number = ANTIALIASING * ANTIALIASING;
     for x in 0..cam.width {
         for y in 0..cam.height {
-            let u = (x as f64) / ((cam.width - 1) as f64);
-            let v = (y as f64) / ((cam.height - 1) as f64);
-            let ra = Ray {
-                origin: cam.position.clone(),
-                direction: cam.lower_left_corner() + cam.horizontal() * u + cam.vertical() * v
-                    - cam.position.clone(),
-            };
+            let mut color = Vec3::zero();
+            for x_step in 1..ANTIALIASING + 1 {
+                for y_step in 1..ANTIALIASING + 1 {
+                    let u =
+                        ((x as f64) + (x_step as f64) * length_per_step[0]) / (cam.width as f64);
+                    let v =
+                        ((y as f64) + (y_step as f64) * length_per_step[1]) / (cam.height as f64);
+                    let ra = cam.get_ray(u, v);
+                    color += ray_color(ra, &wor) / (sample_number as f64);
+                }
+            }
 
-            let pixel = img.get_pixel_mut(x, y);
-            let color = ray_color(ra, &wor);
+            let pixel = img.get_pixel_mut(x, cam.height - 1 - y);
             *pixel = image::Rgb(color.color());
         }
         bar.inc(1);
