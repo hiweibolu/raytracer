@@ -238,6 +238,9 @@ impl Vec3 {
         let r = (1.0 - z * z).sqrt();
         Self::new(r * a.cos(), r * a.sin(), z)
     }
+    pub fn reflect(&self, normal: Self) -> Self {
+        self.clone() - normal.clone() * (self.clone() * normal) * 2.0
+    }
 }
 
 //Hiweibolu End

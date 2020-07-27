@@ -1,5 +1,6 @@
 mod camera;
 mod hit;
+mod material;
 mod random;
 mod ray;
 #[allow(clippy::float_cmp)]
@@ -11,6 +12,7 @@ use indicatif::ProgressBar;
 
 pub use camera::Camera;
 pub use hit::*;
+pub use material::*;
 pub use random::*;
 pub use ray::Ray;
 pub use vec3::Vec3;
@@ -26,16 +28,24 @@ fn ray_color(ra: Ray, wor: &World, depth: i32) -> Vec3 {
 
     let opt: Option<HitResult> = wor.hit(&ra, 0.001, INFINITY);
     if let Option::Some(hit_result) = opt {
-        let target = hit_result.p.clone() + hit_result.normal.clone() + Vec3::random_unit();
+        //let target = hit_result.p.clone() + hit_result.normal.clone() + Vec3::random_unit();
         //return (hit_result.normal + Vec3::ones()) * 0.5;
-        return ray_color(
+        /*return ray_color(
             Ray {
                 origin: hit_result.p.clone(),
                 direction: target - hit_result.p,
             },
             &wor,
             depth - 1,
-        ) * 0.5;
+        ) * 0.5;*/
+        let option: Option<(Vec3, Ray)> = hit_result.mat_ptr.scatter(&ra, &hit_result);
+        if let Option::Some(scatter_result) = option {
+            return Vec3::elemul(
+                scatter_result.0,
+                ray_color(scatter_result.1, &wor, depth - 1),
+            );
+        }
+        return Vec3::zero();
     }
     let unit = ra.direction.unit();
     let t = (unit.y + 1.0) * 0.5;
@@ -51,10 +61,30 @@ fn oneweekend(cam: &Camera) {
             Box::new(Sphere {
                 center: Vec3::new(0.0, 0.0, -2.0),
                 radius: 0.5,
+                mat_ptr: Box::new(Lambertian {
+                    albedo: Vec3::new(0.7, 0.3, 0.3),
+                }),
             }),
             Box::new(Sphere {
                 center: Vec3::new(0.0, -100.5, -2.0),
                 radius: 100.0,
+                mat_ptr: Box::new(Lambertian {
+                    albedo: Vec3::new(0.8, 0.8, 0.0),
+                }),
+            }),
+            Box::new(Sphere {
+                center: Vec3::new(-1.0, 0.0, -2.0),
+                radius: 0.5,
+                mat_ptr: Box::new(Metal {
+                    albedo: Vec3::new(0.8, 0.8, 0.8),
+                }),
+            }),
+            Box::new(Sphere {
+                center: Vec3::new(1.0, 0.0, -2.0),
+                radius: 0.5,
+                mat_ptr: Box::new(Metal {
+                    albedo: Vec3::new(0.8, 0.6, 0.2),
+                }),
             }),
         ],
     };

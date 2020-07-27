@@ -1,15 +1,16 @@
+pub use crate::material::Material;
 pub use crate::ray::Ray;
 pub use crate::vec3::Vec3;
 
-pub struct HitResult {
-    //pub color: Vec3,
+pub struct HitResult<'a> {
     pub t: f64,
     pub p: Vec3,
     pub normal: Vec3,
     pub front_face: bool,
+    pub mat_ptr: &'a Box<dyn Material>,
 }
 
-impl HitResult {
+impl HitResult<'_> {
     pub fn set_face_normal(ra: &Ray, normal: &mut Vec3, front_face: &mut bool) {
         *front_face = ra.direction.clone() * normal.clone() < 0.0;
         *normal = if *front_face {
@@ -20,10 +21,10 @@ impl HitResult {
     }
 }
 
-pub enum Option<HitResult> {
+/*pub enum Option<HitResult> {
     Some(HitResult),
     None,
-}
+}*/
 
 pub trait Hitable {
     fn hit(&self, ra: &Ray, t_min: f64, t_max: f64) -> Option<HitResult>;
@@ -32,6 +33,7 @@ pub trait Hitable {
 pub struct Sphere {
     pub center: Vec3,
     pub radius: f64,
+    pub mat_ptr: Box<dyn Material>,
 }
 
 impl Hitable for Sphere {
@@ -52,11 +54,13 @@ impl Hitable for Sphere {
                 let mut normal = (p.clone() - self.center.clone()) / self.radius;
                 let mut front_face = false;
                 HitResult::set_face_normal(ra, &mut normal, &mut front_face);
+                let mat_ptr = &(self.mat_ptr);
                 return Option::Some(HitResult {
                     t,
                     p,
                     normal,
                     front_face,
+                    mat_ptr,
                 });
             }
             let root = (-b + temp) / (2.0 * a);
@@ -66,11 +70,13 @@ impl Hitable for Sphere {
                 let mut normal = (p.clone() - self.center.clone()) / self.radius;
                 let mut front_face = false;
                 HitResult::set_face_normal(ra, &mut normal, &mut front_face);
+                let mat_ptr = &(self.mat_ptr);
                 return Option::Some(HitResult {
                     t,
                     p,
                     normal,
                     front_face,
+                    mat_ptr,
                 });
             }
         }
