@@ -28,16 +28,6 @@ fn ray_color(ra: Ray, wor: &World, depth: i32) -> Vec3 {
 
     let opt: Option<HitResult> = wor.hit(&ra, 0.001, INFINITY);
     if let Option::Some(hit_result) = opt {
-        //let target = hit_result.p.clone() + hit_result.normal.clone() + Vec3::random_unit();
-        //return (hit_result.normal + Vec3::ones()) * 0.5;
-        /*return ray_color(
-            Ray {
-                origin: hit_result.p.clone(),
-                direction: target - hit_result.p,
-            },
-            &wor,
-            depth - 1,
-        ) * 0.5;*/
         let option: Option<(Vec3, Ray)> = hit_result.mat_ptr.scatter(&ra, &hit_result);
         if let Option::Some(scatter_result) = option {
             return Vec3::elemul(
@@ -52,47 +42,98 @@ fn ray_color(ra: Ray, wor: &World, depth: i32) -> Vec3 {
     Vec3::lerp(Vec3::new(1.0, 1.0, 1.0), Vec3::new(0.5, 0.7, 1.0), t)
 }
 
+fn oneweekend_world() -> World {
+    let mut hitlist: Vec<Box<dyn Hitable>> = vec![
+        Box::new(Sphere {
+            center: Vec3::new(0.0, -1000.0, 0.0),
+            radius: 1000.0,
+            mat_ptr: Box::new(Dielectric { ref_idx: 1.5 }),
+        }),
+        Box::new(Sphere {
+            center: Vec3::new(0.0, 1.0, 0.0),
+            radius: 1.0,
+            mat_ptr: Box::new(Dielectric { ref_idx: 1.5 }),
+        }),
+        Box::new(Sphere {
+            center: Vec3::new(-4.0, 1.0, 0.0),
+            radius: 1.0,
+            mat_ptr: Box::new(Lambertian {
+                albedo: Vec3::new(0.4, 0.2, 0.1),
+            }),
+        }),
+        Box::new(Sphere {
+            center: Vec3::new(4.0, 1.0, 0.0),
+            radius: 1.0,
+            mat_ptr: Box::new(Metal {
+                albedo: Vec3::new(0.7, 0.6, 0.5),
+                fuzzy: 0.0,
+            }),
+        }),
+    ];
+    /*let sphere_number = 50;
+    for _i in 0..sphere_number {
+        hitlist.push(Box::new({
+            let radius = random_double_range(0.25, 1.25);
+            let center = loop {
+                let p = Vec3::random_in_unit_sphere() * 10.0;
+                if p.y > radius {
+                    break p;
+                }
+            };
+            let choose_mat = random_double();
+            let mat_ptr: Box<dyn Material> = if choose_mat < 0.3 {
+                let albedo = Vec3::random();
+                Box::new(Lambertian { albedo })
+            } else if choose_mat < 0.6 {
+                let albedo = Vec3::random();
+                let fuzzy = random_double_range(0.0, 0.5);
+                Box::new(Metal { albedo, fuzzy })
+            } else {
+                Box::new(Dielectric { ref_idx: 1.5 })
+            };
+            Sphere {
+                center,
+                radius,
+                mat_ptr,
+            }
+        }))
+    }*/
+    for a in -11..11 {
+        for b in -11..11 {
+            hitlist.push(Box::new({
+                let radius = 0.2;
+                let center = Vec3::new(
+                    a as f64 + 0.9 * random_double(),
+                    0.2,
+                    b as f64 + 0.9 * random_double(),
+                );
+                let choose_mat = random_double();
+                let mat_ptr: Box<dyn Material> = if choose_mat < 0.3 {
+                    let albedo = Vec3::random();
+                    Box::new(Lambertian { albedo })
+                } else if choose_mat < 0.6 {
+                    let albedo = Vec3::random_range(0.5, 1.0);
+                    let fuzzy = random_double_range(0.0, 0.5);
+                    Box::new(Metal { albedo, fuzzy })
+                } else {
+                    Box::new(Dielectric { ref_idx: 1.5 })
+                };
+                Sphere {
+                    center,
+                    radius,
+                    mat_ptr,
+                }
+            }))
+        }
+    }
+    World { hitlist }
+}
+
 fn oneweekend(cam: &Camera) {
     let mut img: RgbImage = ImageBuffer::new(cam.width, cam.height);
     let bar = ProgressBar::new(cam.width as u64);
 
-    let wor = World {
-        hitlist: vec![
-            Box::new(Sphere {
-                center: Vec3::new(0.0, 0.0, -1.0),
-                radius: 0.5,
-                mat_ptr: Box::new(Lambertian {
-                    albedo: Vec3::new(0.1, 0.2, 0.5),
-                }),
-            }),
-            Box::new(Sphere {
-                center: Vec3::new(0.0, -100.5, -1.0),
-                radius: 100.0,
-                mat_ptr: Box::new(Lambertian {
-                    albedo: Vec3::new(0.8, 0.8, 0.0),
-                }),
-            }),
-            Box::new(Sphere {
-                center: Vec3::new(-1.0, 0.0, -1.0),
-                radius: 0.5,
-                mat_ptr: Box::new(Dielectric { ref_idx: 1.5 }),
-            }),
-            Box::new(Sphere {
-                center: Vec3::new(-1.0, 0.0, -1.0),
-                radius: -0.4,
-                mat_ptr: Box::new(Dielectric { ref_idx: 1.5 }),
-            }),
-            Box::new(Sphere {
-                center: Vec3::new(1.0, 0.0, -1.0),
-                radius: 0.5,
-                mat_ptr: Box::new(Metal {
-                    albedo: Vec3::new(0.8, 0.6, 0.2),
-                    fuzzy: 0.0,
-                }),
-            }),
-        ],
-    };
-
+    let wor = oneweekend_world();
     let length_per_step = [
         1.0 / ((ANTIALIASING + 1) as f64),
         1.0 / ((ANTIALIASING + 1) as f64),
@@ -124,13 +165,13 @@ fn oneweekend(cam: &Camera) {
 
 fn main() {
     let cam = Camera::new(
-        20f64.to_radians(),
+        30f64.to_radians(),
         16.0 / 9.0,
         1280,
-        Vec3::new(3.0, 3.0, 2.0),
-        Vec3::new(0.0, 0.0, -1.0),
+        Vec3::new(13.0, 2.0, 3.0),
+        Vec3::new(0.0, 0.0, 0.0),
         Vec3::new(0.0, 1.0, 0.0),
-        2.0,
+        0.1,
     );
     oneweekend(&cam);
 }
