@@ -415,16 +415,16 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
+    fn test_unit_panic() {
+        Vec3::new(0.0, 0.0, 0.0).unit();
+    }
+
+    #[test]
     fn test_index() {
         assert_eq!(Vec3::new(1.0, 2.0, 3.0)[0], Vec3::new(1.0, 2.0, 3.0).x);
         assert_eq!(Vec3::new(1.0, 2.0, 3.0)[1], Vec3::new(1.0, 2.0, 3.0).y);
         assert_eq!(Vec3::new(1.0, 2.0, 3.0)[2], Vec3::new(1.0, 2.0, 3.0).z);
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_unit_panic() {
-        Vec3::new(0.0, 0.0, 0.0).unit();
     }
 
     #[test]

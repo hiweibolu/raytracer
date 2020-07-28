@@ -3,6 +3,7 @@ pub use crate::random::*;
 pub use crate::ray::Ray;
 pub use crate::texture::*;
 pub use crate::vec3::Vec3;
+use std::sync::Arc;
 
 fn schlick(cosine: f64, ref_idx: f64) -> f64 {
     let r0 = (1.0 - ref_idx) / (1.0 + ref_idx);
@@ -20,7 +21,7 @@ pub trait Material {
 }
 
 pub struct Lambertian {
-    pub albedo: Box<dyn Texture>,
+    pub albedo: Arc<dyn Texture>,
 }
 impl Material for Lambertian {
     fn scatter(&self, _ray_in: &Ray, hit_record: &HitResult) -> Option<(Vec3, Ray)> {
@@ -36,7 +37,7 @@ impl Material for Lambertian {
 }
 
 pub struct Metal {
-    pub albedo: Box<dyn Texture>,
+    pub albedo: Arc<dyn Texture>,
     pub fuzzy: f64,
 }
 impl Material for Metal {
@@ -92,7 +93,7 @@ impl Material for Dielectric {
 }
 
 pub struct DiffuseLight {
-    pub emit: Box<dyn Texture>,
+    pub emit: Arc<dyn Texture>,
 }
 impl Material for DiffuseLight {
     fn emitted(&self, u: f64, v: f64, p: Vec3) -> Vec3 {

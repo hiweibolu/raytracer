@@ -7,10 +7,12 @@ mod ray;
 mod texture;
 #[allow(clippy::float_cmp)]
 mod vec3;
+#[allow(clippy::borrowed_box)]
 mod world;
 use core::f64::INFINITY;
 use image::{ImageBuffer, RgbImage};
 use indicatif::ProgressBar;
+use std::sync::Arc;
 
 pub use camera::Camera;
 pub use hit::*;
@@ -49,40 +51,40 @@ fn ray_color(ra: Ray, wor: &World, depth: i32) -> Vec3 {
 }
 
 fn oneweekend_world() -> World {
-    let mut hitlist: Vec<Box<dyn Hitable>> = vec![
-        Box::new(Sphere {
+    let mut hitlist: Vec<Arc<dyn Hitable>> = vec![
+        Arc::new(Sphere {
             center: Vec3::new(0.0, -1000.0, 0.0),
             radius: 1000.0,
-            mat_ptr: Box::new(Lambertian {
-                albedo: Box::new(CheckerTexture {
-                    odd: Box::new(ConstantTexture {
+            mat_ptr: Arc::new(Lambertian {
+                albedo: Arc::new(CheckerTexture {
+                    odd: Arc::new(ConstantTexture {
                         color: Vec3::new(0.2, 0.3, 0.1),
                     }),
-                    even: Box::new(ConstantTexture {
+                    even: Arc::new(ConstantTexture {
                         color: Vec3::new(0.9, 0.9, 0.9),
                     }),
                 }),
             }),
         }),
-        Box::new(Sphere {
+        Arc::new(Sphere {
             center: Vec3::new(0.0, 1.0, 0.0),
             radius: 1.0,
-            mat_ptr: Box::new(Dielectric { ref_idx: 1.5 }),
+            mat_ptr: Arc::new(Dielectric { ref_idx: 1.5 }),
         }),
-        Box::new(Sphere {
+        Arc::new(Sphere {
             center: Vec3::new(-4.0, 1.0, 0.0),
             radius: 1.0,
-            mat_ptr: Box::new(Lambertian {
-                albedo: Box::new(ConstantTexture {
+            mat_ptr: Arc::new(Lambertian {
+                albedo: Arc::new(ConstantTexture {
                     color: Vec3::new(0.4, 0.2, 0.1),
                 }),
             }),
         }),
-        Box::new(Sphere {
+        Arc::new(Sphere {
             center: Vec3::new(4.0, 1.0, 0.0),
             radius: 1.0,
-            mat_ptr: Box::new(Metal {
-                albedo: Box::new(ConstantTexture {
+            mat_ptr: Arc::new(Metal {
+                albedo: Arc::new(ConstantTexture {
                     color: Vec3::new(0.7, 0.6, 0.5),
                 }),
                 fuzzy: 0.0,
@@ -91,7 +93,7 @@ fn oneweekend_world() -> World {
     ];
     for a in -11..11 {
         for b in -11..11 {
-            hitlist.push(Box::new({
+            hitlist.push(Arc::new({
                 let radius = 0.2;
                 let center = Vec3::new(
                     a as f64 + 0.9 * random_double(),
@@ -99,24 +101,24 @@ fn oneweekend_world() -> World {
                     b as f64 + 0.9 * random_double(),
                 );
                 let choose_mat = random_double();
-                let mat_ptr: Box<dyn Material> = if choose_mat < 0.2 {
-                    let albedo: Box<dyn Texture> = Box::new(ConstantTexture {
+                let mat_ptr: Arc<dyn Material> = if choose_mat < 0.2 {
+                    let albedo: Arc<dyn Texture> = Arc::new(ConstantTexture {
                         color: Vec3::random(),
                     });
-                    Box::new(Lambertian { albedo })
+                    Arc::new(Lambertian { albedo })
                 } else if choose_mat < 0.4 {
-                    let albedo: Box<dyn Texture> = Box::new(ConstantTexture {
+                    let albedo: Arc<dyn Texture> = Arc::new(ConstantTexture {
                         color: Vec3::random_range(0.5, 1.0),
                     });
                     let fuzzy = random_double_range(0.0, 0.5);
-                    Box::new(Metal { albedo, fuzzy })
+                    Arc::new(Metal { albedo, fuzzy })
                 } else if choose_mat < 0.7 {
-                    Box::new(Dielectric { ref_idx: 1.5 })
+                    Arc::new(Dielectric { ref_idx: 1.5 })
                 } else {
-                    let emit: Box<dyn Texture> = Box::new(ConstantTexture {
+                    let emit: Arc<dyn Texture> = Arc::new(ConstantTexture {
                         color: Vec3::random_range(0.5, 1.0),
                     });
-                    Box::new(DiffuseLight { emit })
+                    Arc::new(DiffuseLight { emit })
                 };
                 Sphere {
                     center,
@@ -126,7 +128,7 @@ fn oneweekend_world() -> World {
             }))
         }
     }
-    World { hitlist }
+    World::new(hitlist)
 }
 
 fn oneweekend(cam: &Camera) {

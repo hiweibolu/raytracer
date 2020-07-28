@@ -2,6 +2,8 @@ pub use crate::material::Material;
 pub use crate::ray::Ray;
 pub use crate::vec3::Vec3;
 
+use std::sync::Arc;
+
 pub fn ffmin(a: f64, b: f64) -> f64 {
     if a < b {
         a
@@ -23,43 +25,21 @@ pub struct AABB {
     pub max: Vec3,
 }
 impl AABB {
-    pub fn hit(&self, ra: &Ray, tmin: &mut f64, tmax: &mut f64) -> bool {
-        fn calc(
-            min: f64,
-            max: f64,
-            origin: f64,
-            direction: f64,
-            tmax: &mut f64,
-            tmin: &mut f64,
-        ) -> bool {
-            let t0 = ffmin((min - origin) / direction, (max - origin) / direction);
-            let t1 = ffmax((min - origin) / direction, (max - origin) / direction);
-            tmin.max(t0);
-            tmax.min(t1);
-            tmax > tmin
+    pub fn hit(&self, ra: &Ray, tmin: f64, tmax: f64) -> bool {
+        for a in 0..3 {
+            let t0 = ffmin(
+                (self.min[a] - ra.origin[a]) / ra.direction[a],
+                (self.max[a] - ra.origin[a]) / ra.direction[a],
+            );
+            let t1 = ffmax(
+                (self.min[a] - ra.origin[a]) / ra.direction[a],
+                (self.max[a] - ra.origin[a]) / ra.direction[a],
+            );
+            if tmin > t1 || tmax < t0 {
+                return false;
+            }
         }
-        calc(
-            self.min.x,
-            self.max.x,
-            ra.origin.x,
-            ra.direction.x,
-            tmin,
-            tmax,
-        ) && calc(
-            self.min.y,
-            self.max.y,
-            ra.origin.y,
-            ra.direction.y,
-            tmin,
-            tmax,
-        ) && calc(
-            self.min.z,
-            self.max.z,
-            ra.origin.z,
-            ra.direction.z,
-            tmin,
-            tmax,
-        )
+        true
     }
     pub fn surrounding_box(box0: AABB, box1: AABB) -> AABB {
         let min = Vec3::new(
@@ -76,15 +56,15 @@ impl AABB {
     }
 }
 
-pub struct HitResult<'a> {
+pub struct HitResult {
     pub t: f64,
     pub p: Vec3,
     pub normal: Vec3,
     pub front_face: bool,
-    pub mat_ptr: &'a Box<dyn Material>,
+    pub mat_ptr: Arc<dyn Material>,
 }
 
-impl HitResult<'_> {
+impl HitResult {
     pub fn set_face_normal(ra: &Ray, normal: &mut Vec3, front_face: &mut bool) {
         *front_face = ra.direction.clone() * normal.clone() < 0.0;
         *normal = if *front_face {
@@ -97,7 +77,7 @@ impl HitResult<'_> {
 
 pub trait Hitable {
     fn hit(&self, ra: &Ray, t_min: f64, t_max: f64) -> Option<HitResult>;
-    fn bounding_box(&self, _t0: f64, _t1: f64) -> Option<AABB> {
+    fn bounding_box(&self) -> Option<AABB> {
         None
     }
 }
@@ -105,7 +85,7 @@ pub trait Hitable {
 pub struct Sphere {
     pub center: Vec3,
     pub radius: f64,
-    pub mat_ptr: Box<dyn Material>,
+    pub mat_ptr: Arc<dyn Material>,
 }
 
 impl Hitable for Sphere {
@@ -126,7 +106,7 @@ impl Hitable for Sphere {
                 let mut normal = (p.clone() - self.center.clone()) / self.radius;
                 let mut front_face = false;
                 HitResult::set_face_normal(ra, &mut normal, &mut front_face);
-                let mat_ptr = &(self.mat_ptr);
+                let mat_ptr = self.mat_ptr.clone();
                 return Option::Some(HitResult {
                     t,
                     p,
@@ -142,7 +122,7 @@ impl Hitable for Sphere {
                 let mut normal = (p.clone() - self.center.clone()) / self.radius;
                 let mut front_face = false;
                 HitResult::set_face_normal(ra, &mut normal, &mut front_face);
-                let mat_ptr = &(self.mat_ptr);
+                let mat_ptr = self.mat_ptr.clone();
                 return Option::Some(HitResult {
                     t,
                     p,
@@ -154,7 +134,7 @@ impl Hitable for Sphere {
         }
         Option::None
     }
-    fn bounding_box(&self, _t0: f64, _t1: f64) -> Option<AABB> {
+    fn bounding_box(&self) -> Option<AABB> {
         Some(AABB {
             min: self.center.clone() - Vec3::ones() * self.radius,
             max: self.center.clone() + Vec3::ones() * self.radius,

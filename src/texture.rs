@@ -1,5 +1,6 @@
 pub use crate::random::*;
 pub use crate::vec3::Vec3;
+use std::sync::Arc;
 
 pub trait Texture {
     fn value(&self, u: f64, v: f64, p: Vec3) -> Vec3;
@@ -10,8 +11,8 @@ pub struct ConstantTexture {
 }
 
 pub struct CheckerTexture {
-    pub odd: Box<dyn Texture>,
-    pub even: Box<dyn Texture>,
+    pub odd: Arc<dyn Texture>,
+    pub even: Arc<dyn Texture>,
 }
 
 impl Texture for ConstantTexture {
