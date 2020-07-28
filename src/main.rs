@@ -18,7 +18,7 @@ pub use ray::Ray;
 pub use vec3::Vec3;
 pub use world::World;
 
-const ANTIALIASING: i32 = 2;
+const ANTIALIASING: i32 = 10;
 const MAX_DEPTH: i32 = 50;
 
 fn ray_color(ra: Ray, wor: &World, depth: i32) -> Vec3 {
@@ -62,7 +62,7 @@ fn oneweekend(cam: &Camera) {
                 center: Vec3::new(0.0, 0.0, -2.0),
                 radius: 0.5,
                 mat_ptr: Box::new(Lambertian {
-                    albedo: Vec3::new(0.7, 0.3, 0.3),
+                    albedo: Vec3::new(0.1, 0.2, 0.5),
                 }),
             }),
             Box::new(Sphere {
@@ -75,15 +75,19 @@ fn oneweekend(cam: &Camera) {
             Box::new(Sphere {
                 center: Vec3::new(-1.0, 0.0, -2.0),
                 radius: 0.5,
-                mat_ptr: Box::new(Metal {
-                    albedo: Vec3::new(0.8, 0.8, 0.8),
-                }),
+                mat_ptr: Box::new(Dielectric { ref_idx: 1.5 }),
+            }),
+            Box::new(Sphere {
+                center: Vec3::new(-1.0, 0.0, -2.0),
+                radius: -0.4,
+                mat_ptr: Box::new(Dielectric { ref_idx: 1.5 }),
             }),
             Box::new(Sphere {
                 center: Vec3::new(1.0, 0.0, -2.0),
                 radius: 0.5,
                 mat_ptr: Box::new(Metal {
                     albedo: Vec3::new(0.8, 0.6, 0.2),
+                    fuzzy: 0.0,
                 }),
             }),
         ],

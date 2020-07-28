@@ -241,6 +241,12 @@ impl Vec3 {
     pub fn reflect(&self, normal: Self) -> Self {
         self.clone() - normal.clone() * (self.clone() * normal) * 2.0
     }
+    pub fn refract(&self, normal: Self, etai_over_etat: f64) -> Self {
+        let cos_theta = -self.clone() * normal.clone();
+        let r_out_perp = (self.clone() + normal.clone() * cos_theta) * etai_over_etat;
+        let r_out_parallel = -normal * (1.0 - r_out_perp.squared_length()).sqrt();
+        r_out_perp + r_out_parallel
+    }
 }
 
 //Hiweibolu End
