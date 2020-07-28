@@ -238,6 +238,18 @@ impl Vec3 {
         let r = (1.0 - z * z).sqrt();
         Self::new(r * a.cos(), r * a.sin(), z)
     }
+    pub fn random_in_unit_disk() -> Self {
+        loop {
+            let p = Self::new(
+                random_double_range(-1.0, 1.0),
+                random_double_range(-1.0, 1.0),
+                0.0,
+            );
+            if p.squared_length() < 1.0 {
+                break p;
+            }
+        }
+    }
     pub fn reflect(&self, normal: Self) -> Self {
         self.clone() - normal.clone() * (self.clone() * normal) * 2.0
     }
