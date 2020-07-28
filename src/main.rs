@@ -33,17 +33,19 @@ fn ray_color(ra: Ray, wor: &World, depth: i32) -> Vec3 {
     let opt: Option<HitResult> = wor.hit(&ra, 0.001, INFINITY);
     if let Option::Some(hit_result) = opt {
         let option: Option<(Vec3, Ray)> = hit_result.mat_ptr.scatter(&ra, &hit_result);
+        let emitted = hit_result.mat_ptr.emitted(0.0, 0.0, hit_result.p.clone());
         if let Option::Some(scatter_result) = option {
-            return Vec3::elemul(
-                scatter_result.0,
-                ray_color(scatter_result.1, &wor, depth - 1),
-            );
+            return emitted
+                + Vec3::elemul(
+                    scatter_result.0,
+                    ray_color(scatter_result.1, &wor, depth - 1),
+                );
         }
-        return Vec3::zero();
+        return emitted;
     }
     let unit = ra.direction.unit();
     let t = (unit.y + 1.0) * 0.5;
-    Vec3::lerp(Vec3::new(1.0, 1.0, 1.0), Vec3::new(0.5, 0.7, 1.0), t)
+    Vec3::lerp(Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.25, 0.35, 0.5), t)
 }
 
 fn oneweekend_world() -> World {
@@ -97,19 +99,24 @@ fn oneweekend_world() -> World {
                     b as f64 + 0.9 * random_double(),
                 );
                 let choose_mat = random_double();
-                let mat_ptr: Box<dyn Material> = if choose_mat < 0.3 {
+                let mat_ptr: Box<dyn Material> = if choose_mat < 0.2 {
                     let albedo: Box<dyn Texture> = Box::new(ConstantTexture {
                         color: Vec3::random(),
                     });
                     Box::new(Lambertian { albedo })
-                } else if choose_mat < 0.6 {
+                } else if choose_mat < 0.4 {
                     let albedo: Box<dyn Texture> = Box::new(ConstantTexture {
                         color: Vec3::random_range(0.5, 1.0),
                     });
                     let fuzzy = random_double_range(0.0, 0.5);
                     Box::new(Metal { albedo, fuzzy })
-                } else {
+                } else if choose_mat < 0.7 {
                     Box::new(Dielectric { ref_idx: 1.5 })
+                } else {
+                    let emit: Box<dyn Texture> = Box::new(ConstantTexture {
+                        color: Vec3::random_range(0.5, 1.0),
+                    });
+                    Box::new(DiffuseLight { emit })
                 };
                 Sphere {
                     center,
@@ -164,7 +171,7 @@ fn main() {
         Vec3::new(13.0, 2.0, 3.0),
         Vec3::new(0.0, 0.0, 0.0),
         Vec3::new(0.0, 1.0, 0.0),
-        0.1,
+        0.001,
     );
     oneweekend(&cam);
 }

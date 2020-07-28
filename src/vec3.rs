@@ -1,7 +1,7 @@
 pub use crate::random::*;
 use std::f64::consts::PI;
 
-use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Div, Index, Mul, MulAssign, Neg, Sub, SubAssign};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Vec3 {
@@ -63,6 +63,19 @@ impl AddAssign for Vec3 {
 }
 
 //By Hiweibolu
+
+impl Index<i32> for Vec3 {
+    type Output = f64;
+
+    fn index(&self, other: i32) -> &f64 {
+        match other {
+            0 => &self.x,
+            1 => &self.y,
+            2 => &self.z,
+            _ => panic!("vector: out of index!"),
+        }
+    }
+}
 
 impl AddAssign<f64> for Vec3 {
     fn add_assign(&mut self, other: f64) {
@@ -402,8 +415,22 @@ mod tests {
     }
 
     #[test]
+    fn test_index() {
+        assert_eq!(Vec3::new(1.0, 2.0, 3.0)[0], Vec3::new(1.0, 2.0, 3.0).x);
+        assert_eq!(Vec3::new(1.0, 2.0, 3.0)[1], Vec3::new(1.0, 2.0, 3.0).y);
+        assert_eq!(Vec3::new(1.0, 2.0, 3.0)[2], Vec3::new(1.0, 2.0, 3.0).z);
+    }
+
+    #[test]
     #[should_panic]
     fn test_unit_panic() {
         Vec3::new(0.0, 0.0, 0.0).unit();
+    }
+
+    #[test]
+    #[should_panic]
+    #[allow(clippy::unnecessary_operation)]
+    fn test_index_panic() {
+        Vec3::new(0.0, 0.0, 0.0)[3];
     }
 }

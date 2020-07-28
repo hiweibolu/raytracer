@@ -14,21 +14,14 @@ pub trait Material {
     fn scatter(&self, _ray_in: &Ray, _hit_record: &HitResult) -> Option<(Vec3, Ray)> {
         None
     }
+    fn emitted(&self, _u: f64, _v: f64, _p: Vec3) -> Vec3 {
+        Vec3::zero()
+    }
 }
 
 pub struct Lambertian {
     pub albedo: Box<dyn Texture>,
 }
-
-pub struct Metal {
-    pub albedo: Box<dyn Texture>,
-    pub fuzzy: f64,
-}
-
-pub struct Dielectric {
-    pub ref_idx: f64,
-}
-
 impl Material for Lambertian {
     fn scatter(&self, _ray_in: &Ray, hit_record: &HitResult) -> Option<(Vec3, Ray)> {
         let direction = hit_record.normal.clone() + Vec3::random_unit();
@@ -42,6 +35,10 @@ impl Material for Lambertian {
     }
 }
 
+pub struct Metal {
+    pub albedo: Box<dyn Texture>,
+    pub fuzzy: f64,
+}
 impl Material for Metal {
     fn scatter(&self, ray_in: &Ray, hit_record: &HitResult) -> Option<(Vec3, Ray)> {
         let direction = ray_in.direction.unit().reflect(hit_record.normal.clone())
@@ -57,6 +54,9 @@ impl Material for Metal {
     }
 }
 
+pub struct Dielectric {
+    pub ref_idx: f64,
+}
 impl Material for Dielectric {
     fn scatter(&self, ray_in: &Ray, hit_record: &HitResult) -> Option<(Vec3, Ray)> {
         let etai_over_etat = if hit_record.front_face {
@@ -88,5 +88,14 @@ impl Material for Dielectric {
             };
             Some((Vec3::ones(), scattered))
         }
+    }
+}
+
+pub struct DiffuseLight {
+    pub emit: Box<dyn Texture>,
+}
+impl Material for DiffuseLight {
+    fn emitted(&self, u: f64, v: f64, p: Vec3) -> Vec3 {
+        self.emit.value(u, v, p)
     }
 }
