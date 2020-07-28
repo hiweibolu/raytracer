@@ -59,31 +59,31 @@ fn oneweekend(cam: &Camera) {
     let wor = World {
         hitlist: vec![
             Box::new(Sphere {
-                center: Vec3::new(0.0, 0.0, -2.0),
+                center: Vec3::new(0.0, 0.0, -1.0),
                 radius: 0.5,
                 mat_ptr: Box::new(Lambertian {
                     albedo: Vec3::new(0.1, 0.2, 0.5),
                 }),
             }),
             Box::new(Sphere {
-                center: Vec3::new(0.0, -100.5, -2.0),
+                center: Vec3::new(0.0, -100.5, -1.0),
                 radius: 100.0,
                 mat_ptr: Box::new(Lambertian {
                     albedo: Vec3::new(0.8, 0.8, 0.0),
                 }),
             }),
             Box::new(Sphere {
-                center: Vec3::new(-1.0, 0.0, -2.0),
+                center: Vec3::new(-1.0, 0.0, -1.0),
                 radius: 0.5,
                 mat_ptr: Box::new(Dielectric { ref_idx: 1.5 }),
             }),
             Box::new(Sphere {
-                center: Vec3::new(-1.0, 0.0, -2.0),
+                center: Vec3::new(-1.0, 0.0, -1.0),
                 radius: -0.4,
                 mat_ptr: Box::new(Dielectric { ref_idx: 1.5 }),
             }),
             Box::new(Sphere {
-                center: Vec3::new(1.0, 0.0, -2.0),
+                center: Vec3::new(1.0, 0.0, -1.0),
                 radius: 0.5,
                 mat_ptr: Box::new(Metal {
                     albedo: Vec3::new(0.8, 0.6, 0.2),
@@ -123,6 +123,13 @@ fn oneweekend(cam: &Camera) {
 }
 
 fn main() {
-    let cam = Camera::new(16.0 / 9.0, 1280, Vec3::zero(), 4.0, 1.0);
+    let cam = Camera::new(
+        20f64.to_radians(),
+        16.0 / 9.0,
+        1280,
+        Vec3::new(-2.0, 2.0, 1.0),
+        Vec3::new(0.0, 0.0, -1.0),
+        Vec3::new(0.0, 1.0, 0.0),
+    );
     oneweekend(&cam);
 }

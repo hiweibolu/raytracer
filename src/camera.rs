@@ -3,51 +3,53 @@ pub use crate::vec3::Vec3;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Camera {
+    pub vfov: f64,
     pub ratio: f64,
     pub width: u32,
     pub height: u32,
     pub position: Vec3,
+    pub lookat: Vec3,
     pub viewport_width: f64,
     pub viewport_height: f64,
-    pub focal_length: f64,
+    pub vup: Vec3,
+    pub lower_left_corner: Vec3,
+    pub horizontal: Vec3,
+    pub vertical: Vec3,
 }
 
 impl Camera {
-    pub fn new(rat: f64, wid: u32, pos: Vec3, vwid: f64, flen: f64) -> Self {
+    pub fn new(vfov: f64, ratio: f64, width: u32, position: Vec3, lookat: Vec3, vup: Vec3) -> Self {
+        let height = ((width as f64) / ratio) as u32;
+        let viewport_height = (vfov * 0.5).tan() * 2.0;
+        let viewport_width = viewport_height * ratio;
+        let w = (position.clone() - lookat.clone()).unit();
+        let u = (Vec3::cross(vup.clone(), w.clone())).unit();
+        let v = Vec3::cross(w.clone(), u.clone());
+        let horizontal = u * viewport_width;
+        let vertical = v * viewport_height;
+        let lower_left_corner =
+            position.clone() - horizontal.clone() * 0.5 - vertical.clone() * 0.5 - w;
         Self {
-            ratio: rat,
-            width: wid,
-            height: ((wid as f64) / rat) as u32,
-            position: pos,
-            viewport_width: vwid,
-            viewport_height: vwid / rat,
-            focal_length: flen,
+            vfov,
+            ratio,
+            width,
+            height,
+            position,
+            lookat,
+            viewport_height,
+            viewport_width,
+            lower_left_corner,
+            horizontal,
+            vertical,
+            vup,
         }
-    }
-    pub fn horizontal(&self) -> Vec3 {
-        Vec3 {
-            x: self.viewport_width,
-            y: 0.0,
-            z: 0.0,
-        }
-    }
-    pub fn vertical(&self) -> Vec3 {
-        Vec3 {
-            x: 0.0,
-            y: self.viewport_height,
-            z: 0.0,
-        }
-    }
-    pub fn lower_left_corner(&self) -> Vec3 {
-        self.position.clone()
-            - self.horizontal() * 0.5
-            - self.vertical() * 0.5
-            - Vec3::new(0.0, 0.0, self.focal_length)
     }
     pub fn get_ray(&self, u: f64, v: f64) -> Ray {
         Ray {
             origin: self.position.clone(),
-            direction: self.lower_left_corner() + self.horizontal() * u + self.vertical() * v
+            direction: self.lower_left_corner.clone()
+                + self.horizontal.clone() * u
+                + self.vertical.clone() * v
                 - self.position.clone(),
         }
     }
