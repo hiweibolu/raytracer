@@ -1,6 +1,7 @@
 pub use crate::hit::HitResult;
 pub use crate::random::*;
 pub use crate::ray::Ray;
+pub use crate::texture::*;
 pub use crate::vec3::Vec3;
 
 fn schlick(cosine: f64, ref_idx: f64) -> f64 {
@@ -16,11 +17,11 @@ pub trait Material {
 }
 
 pub struct Lambertian {
-    pub albedo: Vec3,
+    pub albedo: Box<dyn Texture>,
 }
 
 pub struct Metal {
-    pub albedo: Vec3,
+    pub albedo: Box<dyn Texture>,
     pub fuzzy: f64,
 }
 
@@ -32,7 +33,7 @@ impl Material for Lambertian {
     fn scatter(&self, _ray_in: &Ray, hit_record: &HitResult) -> Option<(Vec3, Ray)> {
         let direction = hit_record.normal.clone() + Vec3::random_unit();
         Some((
-            self.albedo.clone(),
+            self.albedo.value(0.0, 0.0, hit_record.p.clone()),
             Ray {
                 origin: hit_record.p.clone(),
                 direction,
@@ -52,7 +53,7 @@ impl Material for Metal {
         if scattered.direction.clone() * hit_record.normal.clone() <= 0.0 {
             return None;
         }
-        Some((self.albedo.clone(), scattered))
+        Some((self.albedo.value(0.0, 0.0, hit_record.p.clone()), scattered))
     }
 }
 

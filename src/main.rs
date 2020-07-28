@@ -1,8 +1,10 @@
 mod camera;
+#[allow(clippy::borrowed_box)]
 mod hit;
 mod material;
 mod random;
 mod ray;
+mod texture;
 #[allow(clippy::float_cmp)]
 mod vec3;
 mod world;
@@ -15,9 +17,11 @@ pub use hit::*;
 pub use material::*;
 pub use random::*;
 pub use ray::Ray;
+pub use texture::*;
 pub use vec3::Vec3;
 pub use world::World;
 
+const WIDTH: u32 = 1280;
 const ANTIALIASING: i32 = 10;
 const MAX_DEPTH: i32 = 50;
 
@@ -47,7 +51,16 @@ fn oneweekend_world() -> World {
         Box::new(Sphere {
             center: Vec3::new(0.0, -1000.0, 0.0),
             radius: 1000.0,
-            mat_ptr: Box::new(Dielectric { ref_idx: 1.5 }),
+            mat_ptr: Box::new(Lambertian {
+                albedo: Box::new(CheckerTexture {
+                    odd: Box::new(ConstantTexture {
+                        color: Vec3::new(0.2, 0.3, 0.1),
+                    }),
+                    even: Box::new(ConstantTexture {
+                        color: Vec3::new(0.9, 0.9, 0.9),
+                    }),
+                }),
+            }),
         }),
         Box::new(Sphere {
             center: Vec3::new(0.0, 1.0, 0.0),
@@ -58,46 +71,22 @@ fn oneweekend_world() -> World {
             center: Vec3::new(-4.0, 1.0, 0.0),
             radius: 1.0,
             mat_ptr: Box::new(Lambertian {
-                albedo: Vec3::new(0.4, 0.2, 0.1),
+                albedo: Box::new(ConstantTexture {
+                    color: Vec3::new(0.4, 0.2, 0.1),
+                }),
             }),
         }),
         Box::new(Sphere {
             center: Vec3::new(4.0, 1.0, 0.0),
             radius: 1.0,
             mat_ptr: Box::new(Metal {
-                albedo: Vec3::new(0.7, 0.6, 0.5),
+                albedo: Box::new(ConstantTexture {
+                    color: Vec3::new(0.7, 0.6, 0.5),
+                }),
                 fuzzy: 0.0,
             }),
         }),
     ];
-    /*let sphere_number = 50;
-    for _i in 0..sphere_number {
-        hitlist.push(Box::new({
-            let radius = random_double_range(0.25, 1.25);
-            let center = loop {
-                let p = Vec3::random_in_unit_sphere() * 10.0;
-                if p.y > radius {
-                    break p;
-                }
-            };
-            let choose_mat = random_double();
-            let mat_ptr: Box<dyn Material> = if choose_mat < 0.3 {
-                let albedo = Vec3::random();
-                Box::new(Lambertian { albedo })
-            } else if choose_mat < 0.6 {
-                let albedo = Vec3::random();
-                let fuzzy = random_double_range(0.0, 0.5);
-                Box::new(Metal { albedo, fuzzy })
-            } else {
-                Box::new(Dielectric { ref_idx: 1.5 })
-            };
-            Sphere {
-                center,
-                radius,
-                mat_ptr,
-            }
-        }))
-    }*/
     for a in -11..11 {
         for b in -11..11 {
             hitlist.push(Box::new({
@@ -109,10 +98,14 @@ fn oneweekend_world() -> World {
                 );
                 let choose_mat = random_double();
                 let mat_ptr: Box<dyn Material> = if choose_mat < 0.3 {
-                    let albedo = Vec3::random();
+                    let albedo: Box<dyn Texture> = Box::new(ConstantTexture {
+                        color: Vec3::random(),
+                    });
                     Box::new(Lambertian { albedo })
                 } else if choose_mat < 0.6 {
-                    let albedo = Vec3::random_range(0.5, 1.0);
+                    let albedo: Box<dyn Texture> = Box::new(ConstantTexture {
+                        color: Vec3::random_range(0.5, 1.0),
+                    });
                     let fuzzy = random_double_range(0.0, 0.5);
                     Box::new(Metal { albedo, fuzzy })
                 } else {
@@ -167,7 +160,7 @@ fn main() {
     let cam = Camera::new(
         30f64.to_radians(),
         16.0 / 9.0,
-        1280,
+        WIDTH,
         Vec3::new(13.0, 2.0, 3.0),
         Vec3::new(0.0, 0.0, 0.0),
         Vec3::new(0.0, 1.0, 0.0),
