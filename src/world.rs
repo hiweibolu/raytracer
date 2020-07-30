@@ -86,16 +86,6 @@ pub struct World {
 impl World {
     pub fn hit(&self, ra: &Ray, t_min: f64, t_max: f64) -> Option<HitResult> {
         self.root.hit(&ra, t_min, t_max)
-        /*let mut ans: Option<HitResult> = Option::None;
-        let mut closest_t = t_max;
-        for i in &self.hitlist {
-            let opt = i.hit(&ra, t_min, closest_t);
-            if let Option::Some(hit_result) = opt {
-                closest_t = hit_result.t;
-                ans = Option::Some(hit_result);
-            }
-        }
-        ans*/
     }
     pub fn new(mut hitlist: Vec<Arc<dyn Hitable>>) -> Self {
         let length = hitlist.len();

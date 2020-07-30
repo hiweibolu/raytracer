@@ -66,7 +66,10 @@ fn oneweekend_world() -> World {
                 }),
             }),
         }),
-        Arc::new(Sphere {
+        random_hitable(Vec3::new(0.0, 1.0, 0.0), 1.0),
+        random_hitable(Vec3::new(-4.0, 1.0, 0.0), 1.0),
+        random_hitable(Vec3::new(4.0, 1.0, 0.0), 1.0),
+        /*Arc::new(Sphere {
             center: Vec3::new(0.0, 1.0, 0.0),
             radius: 1.0,
             mat_ptr: Arc::new(Dielectric { ref_idx: 1.5 }),
@@ -89,11 +92,19 @@ fn oneweekend_world() -> World {
                 }),
                 fuzzy: 0.0,
             }),
-        }),
+        }),*/
     ];
     for a in -11..11 {
         for b in -11..11 {
-            hitlist.push(Arc::new({
+            hitlist.push(random_hitable(
+                Vec3::new(
+                    a as f64 + 0.9 * random_double(),
+                    0.2,
+                    b as f64 + 0.9 * random_double(),
+                ),
+                0.2,
+            ));
+            /*hitlist.push(Arc::new({
                 let radius = 0.2;
                 let center = Vec3::new(
                     a as f64 + 0.9 * random_double(),
@@ -125,7 +136,7 @@ fn oneweekend_world() -> World {
                     radius,
                     mat_ptr,
                 }
-            }))
+            }))*/
         }
     }
     World::new(hitlist)
@@ -151,7 +162,10 @@ fn oneweekend(cam: &Camera) {
                     let v =
                         ((y as f64) + (y_step as f64) * length_per_step[1]) / (cam.height as f64);
                     let ra = cam.get_ray(u, v);
-                    color += ray_color(ra, &wor, MAX_DEPTH) / (sample_number as f64);
+                    let co = ray_color(ra, &wor, MAX_DEPTH)
+                        .min(Vec3::ones())
+                        .max(Vec3::zero());
+                    color += co / (sample_number as f64);
                 }
             }
 

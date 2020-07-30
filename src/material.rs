@@ -100,3 +100,20 @@ impl Material for DiffuseLight {
         self.emit.value(u, v, p)
     }
 }
+
+pub fn random_material() -> Arc<dyn Material> {
+    let choose_material = (4.0 * random_double()).floor() as i32;
+    match choose_material {
+        0 => Arc::new(Lambertian {
+            albedo: random_texture(),
+        }),
+        1 => Arc::new(Metal {
+            albedo: random_texture(),
+            fuzzy: random_double_range(0.0, 0.5),
+        }),
+        2 => Arc::new(Dielectric { ref_idx: 1.5 }),
+        _ => Arc::new(DiffuseLight {
+            emit: random_texture(),
+        }),
+    }
+}

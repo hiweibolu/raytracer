@@ -272,6 +272,20 @@ impl Vec3 {
         let r_out_parallel = -normal * (1.0 - r_out_perp.squared_length()).sqrt();
         r_out_perp + r_out_parallel
     }
+    pub fn min(&self, other: Self) -> Self {
+        Self {
+            x: self.x.min(other.x),
+            y: self.y.min(other.y),
+            z: self.z.min(other.z),
+        }
+    }
+    pub fn max(&self, other: Self) -> Self {
+        Self {
+            x: self.x.max(other.x),
+            y: self.y.max(other.y),
+            z: self.z.max(other.z),
+        }
+    }
 }
 
 //Hiweibolu End

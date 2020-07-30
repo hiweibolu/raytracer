@@ -31,3 +31,16 @@ impl Texture for CheckerTexture {
         }
     }
 }
+
+pub fn random_texture() -> Arc<dyn Texture> {
+    let choose_texture = (2.0 * random_double()).floor() as i32;
+    match choose_texture {
+        0 => Arc::new(ConstantTexture {
+            color: Vec3::random(),
+        }),
+        _ => Arc::new(CheckerTexture {
+            odd: random_texture(),
+            even: random_texture(),
+        }),
+    }
+}
