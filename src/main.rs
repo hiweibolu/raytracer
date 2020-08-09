@@ -45,8 +45,8 @@ fn ray_color(ra: Ray, wor: &World, depth: i32) -> Vec3 {
         }
         return emitted;
     }
-	
-	Vec3::zero()
+
+    Vec3::zero()
     /*let unit = ra.direction.unit();
     let t = (unit.y + 1.0) * 0.5;
     Vec3::lerp(Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.0, 0.0, 0.0), t)*/
