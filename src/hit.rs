@@ -2,6 +2,8 @@ pub use crate::material::*;
 pub use crate::ray::Ray;
 pub use crate::vec3::Vec3;
 
+use core::f64::INFINITY;
+
 use std::sync::Arc;
 
 pub fn ffmin(a: f64, b: f64) -> f64 {
@@ -208,7 +210,7 @@ impl Hitable for Triangle {
     }
 }
 
-pub struct Cube {
+/*pub struct Cube {
     pub hitlist: Vec<Arc<dyn Hitable>>,
     pub bbox: AABB,
     /*pub v0: Vec3,
@@ -337,6 +339,311 @@ impl Hitable for Cube {
     fn bounding_box(&self) -> Option<AABB> {
         Some(self.bbox.clone())
     }
+}*/
+
+pub struct XyRect {
+    pub x0: f64,
+    pub x1: f64,
+    pub y0: f64,
+    pub y1: f64,
+    pub k: f64,
+    pub mat_ptr: Arc<dyn Material>,
+}
+
+impl Hitable for XyRect {
+    fn hit(&self, ra: &Ray, t_min: f64, t_max: f64) -> Option<HitResult> {
+        let t = (self.k - ra.origin.z) / ra.direction.z;
+        if t < t_min || t > t_max {
+            return None;
+        }
+        let x = ra.origin.x + t * ra.direction.x;
+        let y = ra.origin.y + t * ra.direction.y;
+        if x < self.x0 || x > self.x1 || y < self.y0 || y > self.y1 {
+            return None;
+        }
+        let mut normal = Vec3::new(0.0, 0.0, 1.0);
+        let mut front_face = false;
+        HitResult::set_face_normal(ra, &mut normal, &mut front_face);
+        Some(HitResult {
+            t,
+            p: ra.at(t),
+            normal,
+            front_face,
+            mat_ptr: self.mat_ptr.clone(),
+        })
+    }
+    fn bounding_box(&self) -> Option<AABB> {
+        Some(AABB {
+            min: Vec3::new(self.x0, self.y0, self.k - 0.0001),
+            max: Vec3::new(self.x1, self.y1, self.k + 0.0001),
+        })
+    }
+}
+
+pub struct XzRect {
+    pub x0: f64,
+    pub x1: f64,
+    pub z0: f64,
+    pub z1: f64,
+    pub k: f64,
+    pub mat_ptr: Arc<dyn Material>,
+}
+
+impl Hitable for XzRect {
+    fn hit(&self, ra: &Ray, t_min: f64, t_max: f64) -> Option<HitResult> {
+        let t = (self.k - ra.origin.y) / ra.direction.y;
+        if t < t_min || t > t_max {
+            return None;
+        }
+        let x = ra.origin.x + t * ra.direction.x;
+        let z = ra.origin.z + t * ra.direction.z;
+        if x < self.x0 || x > self.x1 || z < self.z0 || z > self.z1 {
+            return None;
+        }
+        let mut normal = Vec3::new(0.0, 1.0, 0.0);
+        let mut front_face = false;
+        HitResult::set_face_normal(ra, &mut normal, &mut front_face);
+        Some(HitResult {
+            t,
+            p: ra.at(t),
+            normal,
+            front_face,
+            mat_ptr: self.mat_ptr.clone(),
+        })
+    }
+    fn bounding_box(&self) -> Option<AABB> {
+        Some(AABB {
+            min: Vec3::new(self.x0, self.k - 0.0001, self.z0),
+            max: Vec3::new(self.x1, self.k + 0.0001, self.z1),
+        })
+    }
+}
+pub struct YzRect {
+    pub y0: f64,
+    pub y1: f64,
+    pub z0: f64,
+    pub z1: f64,
+    pub k: f64,
+    pub mat_ptr: Arc<dyn Material>,
+}
+
+impl Hitable for YzRect {
+    fn hit(&self, ra: &Ray, t_min: f64, t_max: f64) -> Option<HitResult> {
+        let t = (self.k - ra.origin.x) / ra.direction.x;
+        if t < t_min || t > t_max {
+            return None;
+        }
+        let z = ra.origin.z + t * ra.direction.z;
+        let y = ra.origin.y + t * ra.direction.y;
+        if z < self.z0 || z > self.z1 || y < self.y0 || y > self.y1 {
+            return None;
+        }
+        let mut normal = Vec3::new(1.0, 0.0, 0.0);
+        let mut front_face = false;
+        HitResult::set_face_normal(ra, &mut normal, &mut front_face);
+        Some(HitResult {
+            t,
+            p: ra.at(t),
+            normal,
+            front_face,
+            mat_ptr: self.mat_ptr.clone(),
+        })
+    }
+    fn bounding_box(&self) -> Option<AABB> {
+        Some(AABB {
+            min: Vec3::new(self.k - 0.0001, self.y0, self.z0),
+            max: Vec3::new(self.k + 0.0001, self.y1, self.z1),
+        })
+    }
+}
+
+pub struct Cube {
+    pub p0: Vec3,
+    pub p1: Vec3,
+    pub mat_ptr: Arc<dyn Material>,
+    pub sides: Vec<Arc<dyn Hitable>>,
+}
+impl Cube {
+    pub fn new(p0: Vec3, p1: Vec3, mat_ptr: Arc<dyn Material>) -> Self {
+        let sides: Vec<Arc<dyn Hitable>> = vec![
+            Arc::new(XyRect {
+                x0: p0.x,
+                x1: p1.x,
+                y0: p0.y,
+                y1: p1.y,
+                k: p1.z,
+                mat_ptr: mat_ptr.clone(),
+            }),
+            Arc::new(XyRect {
+                x0: p0.x,
+                x1: p1.x,
+                y0: p0.y,
+                y1: p1.y,
+                k: p0.z,
+                mat_ptr: mat_ptr.clone(),
+            }),
+            Arc::new(XzRect {
+                x0: p0.x,
+                x1: p1.x,
+                z0: p0.z,
+                z1: p1.z,
+                k: p1.y,
+                mat_ptr: mat_ptr.clone(),
+            }),
+            Arc::new(XzRect {
+                x0: p0.x,
+                x1: p1.x,
+                z0: p0.z,
+                z1: p1.z,
+                k: p0.y,
+                mat_ptr: mat_ptr.clone(),
+            }),
+            Arc::new(YzRect {
+                y0: p0.y,
+                y1: p1.y,
+                z0: p0.z,
+                z1: p1.z,
+                k: p1.x,
+                mat_ptr: mat_ptr.clone(),
+            }),
+            Arc::new(YzRect {
+                y0: p0.y,
+                y1: p1.y,
+                z0: p0.z,
+                z1: p1.z,
+                k: p0.x,
+                mat_ptr: mat_ptr.clone(),
+            }),
+        ];
+        Self {
+            p0,
+            p1,
+            mat_ptr,
+            sides,
+        }
+    }
+}
+impl Hitable for Cube {
+    fn hit(&self, ra: &Ray, t_min: f64, t_max: f64) -> Option<HitResult> {
+        hit(&self.sides, &ra, t_min, t_max)
+    }
+    fn bounding_box(&self) -> Option<AABB> {
+        Some(AABB {
+            min: self.p0.clone(),
+            max: self.p1.clone(),
+        })
+    }
+}
+
+pub struct Translate {
+    pub offset: Vec3,
+    pub ptr: Arc<dyn Hitable>,
+}
+impl Hitable for Translate {
+    fn hit(&self, ra: &Ray, t_min: f64, t_max: f64) -> Option<HitResult> {
+        let moved_r = Ray {
+            origin: ra.origin.clone() - self.offset.clone(),
+            direction: ra.direction.clone(),
+        };
+        if let Some(mut hit_result) = self.ptr.hit(&moved_r, t_min, t_max) {
+            hit_result.p += self.offset.clone();
+            HitResult::set_face_normal(
+                &moved_r,
+                &mut hit_result.normal,
+                &mut hit_result.front_face,
+            );
+            return Some(hit_result);
+        };
+        None
+    }
+    fn bounding_box(&self) -> Option<AABB> {
+        if let Some(output_box) = self.ptr.bounding_box() {
+            return Some(AABB {
+                min: output_box.min + self.offset.clone(),
+                max: output_box.max + self.offset.clone(),
+            });
+        };
+        None
+    }
+}
+
+pub struct RotateY {
+    pub ptr: Arc<dyn Hitable>,
+    pub sin_theta: f64,
+    pub cos_theta: f64,
+    pub bbox: Option<AABB>,
+}
+impl RotateY {
+    pub fn new(ptr: Arc<dyn Hitable>, angle: f64) -> Self {
+        let radians = angle.to_radians();
+        let sin_theta = radians.sin();
+        let cos_theta = radians.cos();
+        let bbox = if let Some(bbox) = ptr.bounding_box() {
+            let mut min = Vec3::new(INFINITY, INFINITY, INFINITY);
+            let mut max = Vec3::new(-INFINITY, -INFINITY, -INFINITY);
+
+            for i in 0..2 {
+                for j in 0..2 {
+                    for k in 0..2 {
+                        let xx = (i as f64) * bbox.max.x + (1.0 - (i as f64)) * bbox.min.x;
+                        let yy = (j as f64) * bbox.max.y + (1.0 - (j as f64)) * bbox.min.y;
+                        let zz = (k as f64) * bbox.max.z + (1.0 - (k as f64)) * bbox.min.z;
+
+                        let newx = cos_theta * xx + sin_theta * zz;
+                        let newz = -sin_theta * xx + cos_theta * zz;
+
+                        let tester = Vec3::new(newx, yy, newz);
+                        min = min.min(tester.clone());
+                        max = max.max(tester);
+                    }
+                }
+            }
+            Some(AABB { min, max })
+        } else {
+            None
+        };
+        RotateY {
+            ptr,
+            sin_theta,
+            cos_theta,
+            bbox,
+        }
+    }
+    fn rotate1(&self, p: &mut Vec3) {
+        let q = p.clone();
+        p.x = self.cos_theta * q.x - self.sin_theta * q.z;
+        p.z = self.sin_theta * q.x + self.cos_theta * q.z;
+    }
+    fn rotate2(&self, p: &mut Vec3) {
+        let q = p.clone();
+        p.x = self.cos_theta * q.x + self.sin_theta * q.z;
+        p.z = -self.sin_theta * q.x + self.cos_theta * q.z;
+    }
+}
+impl Hitable for RotateY {
+    fn hit(&self, ra: &Ray, t_min: f64, t_max: f64) -> Option<HitResult> {
+        let mut origin = ra.origin.clone();
+        let mut direction = ra.direction.clone();
+
+        self.rotate1(&mut origin);
+        self.rotate1(&mut direction);
+
+        let rotated_r = Ray { origin, direction };
+        if let Some(mut hit_result) = self.ptr.hit(&rotated_r, t_min, t_max) {
+            self.rotate2(&mut hit_result.p);
+            self.rotate2(&mut hit_result.normal);
+            HitResult::set_face_normal(
+                &rotated_r,
+                &mut hit_result.normal,
+                &mut hit_result.front_face,
+            );
+            return Some(hit_result);
+        }
+        None
+    }
+    fn bounding_box(&self) -> Option<AABB> {
+        self.bbox.clone()
+    }
 }
 
 pub fn random_hitable(center: Vec3, size: f64) -> Arc<dyn Hitable> {
@@ -347,6 +654,11 @@ pub fn random_hitable(center: Vec3, size: f64) -> Arc<dyn Hitable> {
             radius: size,
             mat_ptr: random_material(),
         }),
-        _ => Arc::new(Cube::new(center, size, random_material())),
+        _ => Arc::new(Cube::new(
+            center.clone() - Vec3::new(size, size, size),
+            center + Vec3::new(size, size, size),
+            random_material(),
+        )),
+        //_ => Arc::new(Cube::new(center, size, random_material())),
     }
 }

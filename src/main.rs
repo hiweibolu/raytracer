@@ -23,7 +23,7 @@ pub use texture::*;
 pub use vec3::Vec3;
 pub use world::World;
 
-const WIDTH: u32 = 1280;
+const WIDTH: u32 = 600;
 const ANTIALIASING: i32 = 10;
 const MAX_DEPTH: i32 = 50;
 
@@ -45,108 +45,115 @@ fn ray_color(ra: Ray, wor: &World, depth: i32) -> Vec3 {
         }
         return emitted;
     }
-    let unit = ra.direction.unit();
+	
+	Vec3::zero()
+    /*let unit = ra.direction.unit();
     let t = (unit.y + 1.0) * 0.5;
-    Vec3::lerp(Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.25, 0.35, 0.5), t)
+    Vec3::lerp(Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.0, 0.0, 0.0), t)*/
 }
 
-fn oneweekend_world() -> World {
+fn cornell_box() -> World {
+    let red = Arc::new(Lambertian {
+        albedo: Arc::new(ConstantTexture {
+            color: Vec3::new(0.65, 0.05, 0.05),
+        }),
+    });
+    let white = Arc::new(Lambertian {
+        albedo: Arc::new(ConstantTexture {
+            color: Vec3::new(0.73, 0.73, 0.73),
+        }),
+    });
+    let green = Arc::new(Lambertian {
+        albedo: Arc::new(ConstantTexture {
+            color: Vec3::new(0.12, 0.45, 0.15),
+        }),
+    });
+    let light = Arc::new(DiffuseLight {
+        emit: Arc::new(ConstantTexture {
+            color: Vec3::new(15.0, 15.0, 15.0),
+        }),
+    });
     let mut hitlist: Vec<Arc<dyn Hitable>> = vec![
-        Arc::new(Sphere {
-            center: Vec3::new(0.0, -1000.0, 0.0),
-            radius: 1000.0,
-            mat_ptr: Arc::new(Lambertian {
-                albedo: Arc::new(CheckerTexture {
-                    odd: Arc::new(ConstantTexture {
-                        color: Vec3::new(0.2, 0.3, 0.1),
-                    }),
-                    even: Arc::new(ConstantTexture {
-                        color: Vec3::new(0.9, 0.9, 0.9),
-                    }),
-                }),
-            }),
+        Arc::new(YzRect {
+            y0: 0.0,
+            y1: 555.0,
+            z0: 0.0,
+            z1: 555.0,
+            k: 555.0,
+            mat_ptr: green,
         }),
-        random_hitable(Vec3::new(0.0, 1.0, 0.0), 1.0),
-        random_hitable(Vec3::new(-4.0, 1.0, 0.0), 1.0),
-        random_hitable(Vec3::new(4.0, 1.0, 0.0), 1.0),
-        /*Arc::new(Sphere {
-            center: Vec3::new(0.0, 1.0, 0.0),
-            radius: 1.0,
-            mat_ptr: Arc::new(Dielectric { ref_idx: 1.5 }),
+        Arc::new(YzRect {
+            y0: 0.0,
+            y1: 555.0,
+            z0: 0.0,
+            z1: 555.0,
+            k: 0.0,
+            mat_ptr: red,
         }),
-        Arc::new(Sphere {
-            center: Vec3::new(-4.0, 1.0, 0.0),
-            radius: 1.0,
-            mat_ptr: Arc::new(Lambertian {
-                albedo: Arc::new(ConstantTexture {
-                    color: Vec3::new(0.4, 0.2, 0.1),
-                }),
-            }),
+        Arc::new(XzRect {
+            x0: 213.0,
+            x1: 343.0,
+            z0: 227.0,
+            z1: 332.0,
+            k: 554.0,
+            mat_ptr: light,
         }),
-        Arc::new(Sphere {
-            center: Vec3::new(4.0, 1.0, 0.0),
-            radius: 1.0,
-            mat_ptr: Arc::new(Metal {
-                albedo: Arc::new(ConstantTexture {
-                    color: Vec3::new(0.7, 0.6, 0.5),
-                }),
-                fuzzy: 0.0,
-            }),
-        }),*/
+        Arc::new(XzRect {
+            x0: 0.0,
+            x1: 555.0,
+            z0: 0.0,
+            z1: 555.0,
+            k: 0.0,
+            mat_ptr: white.clone(),
+        }),
+        Arc::new(XzRect {
+            x0: 0.0,
+            x1: 555.0,
+            z0: 0.0,
+            z1: 555.0,
+            k: 555.0,
+            mat_ptr: white.clone(),
+        }),
+        Arc::new(XyRect {
+            x0: 0.0,
+            x1: 555.0,
+            y0: 0.0,
+            y1: 555.0,
+            k: 555.0,
+            mat_ptr: white.clone(),
+        }),
     ];
-    for a in -11..11 {
-        for b in -11..11 {
-            hitlist.push(random_hitable(
-                Vec3::new(
-                    a as f64 + 0.9 * random_double(),
-                    0.2,
-                    b as f64 + 0.9 * random_double(),
-                ),
-                0.2,
-            ));
-            /*hitlist.push(Arc::new({
-                let radius = 0.2;
-                let center = Vec3::new(
-                    a as f64 + 0.9 * random_double(),
-                    0.2,
-                    b as f64 + 0.9 * random_double(),
-                );
-                let choose_mat = random_double();
-                let mat_ptr: Arc<dyn Material> = if choose_mat < 0.2 {
-                    let albedo: Arc<dyn Texture> = Arc::new(ConstantTexture {
-                        color: Vec3::random(),
-                    });
-                    Arc::new(Lambertian { albedo })
-                } else if choose_mat < 0.4 {
-                    let albedo: Arc<dyn Texture> = Arc::new(ConstantTexture {
-                        color: Vec3::random_range(0.5, 1.0),
-                    });
-                    let fuzzy = random_double_range(0.0, 0.5);
-                    Arc::new(Metal { albedo, fuzzy })
-                } else if choose_mat < 0.7 {
-                    Arc::new(Dielectric { ref_idx: 1.5 })
-                } else {
-                    let emit: Arc<dyn Texture> = Arc::new(ConstantTexture {
-                        color: Vec3::random_range(0.5, 1.0),
-                    });
-                    Arc::new(DiffuseLight { emit })
-                };
-                Sphere {
-                    center,
-                    radius,
-                    mat_ptr,
-                }
-            }))*/
-        }
-    }
+    let mut cube1: Arc<dyn Hitable> = Arc::new(Cube::new(
+        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::new(165.0, 330.0, 165.0),
+        white.clone(),
+    ));
+    cube1 = Arc::new(RotateY::new(cube1, 15.0));
+    cube1 = Arc::new(Translate {
+        offset: Vec3::new(265.0, 0.0, 295.0),
+        ptr: cube1,
+    });
+    hitlist.push(cube1);
+
+    let mut cube2: Arc<dyn Hitable> = Arc::new(Cube::new(
+        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::new(165.0, 165.0, 165.0),
+        white,
+    ));
+    cube2 = Arc::new(RotateY::new(cube2, -18.0));
+    cube2 = Arc::new(Translate {
+        offset: Vec3::new(130.0, 0.0, 65.0),
+        ptr: cube2,
+    });
+    hitlist.push(cube2);
     World::new(hitlist)
 }
 
-fn oneweekend(cam: &Camera) {
+fn work(cam: &Camera) {
     let mut img: RgbImage = ImageBuffer::new(cam.width, cam.height);
     let bar = ProgressBar::new(cam.width as u64);
 
-    let wor = oneweekend_world();
+    let wor = cornell_box(); //oneweekend_world();
     let length_per_step = [
         1.0 / ((ANTIALIASING + 1) as f64),
         1.0 / ((ANTIALIASING + 1) as f64),
@@ -162,32 +169,34 @@ fn oneweekend(cam: &Camera) {
                     let v =
                         ((y as f64) + (y_step as f64) * length_per_step[1]) / (cam.height as f64);
                     let ra = cam.get_ray(u, v);
-                    let co = ray_color(ra, &wor, MAX_DEPTH)
-                        .min(Vec3::ones())
-                        .max(Vec3::zero());
+                    let co = ray_color(ra, &wor, MAX_DEPTH);
+                    /*let co = ray_color(ra, &wor, MAX_DEPTH)
+                    .min(Vec3::ones())
+                    .max(Vec3::zero());*/
                     color += co / (sample_number as f64);
                 }
             }
 
             let pixel = img.get_pixel_mut(x, cam.height - 1 - y);
+            color = color.min(Vec3::ones()).max(Vec3::zero());
             *pixel = image::Rgb(color.sqrt().color());
         }
         bar.inc(1);
     }
 
-    img.save("output/oneweekend.png").unwrap();
+    img.save("output/output.png").unwrap();
     bar.finish();
 }
 
 fn main() {
     let cam = Camera::new(
-        30f64.to_radians(),
-        16.0 / 9.0,
+        40f64.to_radians(),
+        1.0,
         WIDTH,
-        Vec3::new(13.0, 2.0, 3.0),
-        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::new(278.0, 278.0, -800.0),
+        Vec3::new(278.0, 278.0, 0.0),
         Vec3::new(0.0, 1.0, 0.0),
-        0.001,
+        0.0,
     );
-    oneweekend(&cam);
+    work(&cam);
 }

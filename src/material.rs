@@ -15,6 +15,7 @@ pub trait Material {
     fn scatter(&self, _ray_in: &Ray, _hit_record: &HitResult) -> Option<(Vec3, Ray)> {
         None
     }
+	fn 
     fn emitted(&self, _u: f64, _v: f64, _p: Vec3) -> Vec3 {
         Vec3::zero()
     }
@@ -74,6 +75,7 @@ impl Material for Dielectric {
             let reflect_prob = schlick(cos_theta, etai_over_etat);
             random_double() < reflect_prob
         };
+        //let reflect = false;
         if reflect {
             let direction = unit_vector.reflect(hit_record.normal.clone());
             let scattered = Ray {
