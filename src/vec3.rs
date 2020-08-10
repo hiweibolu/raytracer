@@ -27,6 +27,11 @@ impl Vec3 {
         self.x * self.x + self.y * self.y + self.z * self.z
     }
 }
+impl Default for Vec3 {
+    fn default() -> Self {
+        Self::zero()
+    }
+}
 
 impl Add for Vec3 {
     type Output = Self;

@@ -3,6 +3,7 @@ pub use crate::ray::Ray;
 pub use crate::vec3::Vec3;
 
 use core::f64::INFINITY;
+use std::f64::consts::PI;
 
 use std::sync::Arc;
 
@@ -61,6 +62,8 @@ impl AABB {
 pub struct HitResult {
     pub t: f64,
     pub p: Vec3,
+    pub fu: f64,
+    pub fv: f64,
     pub normal: Vec3,
     pub front_face: bool,
     pub mat_ptr: Arc<dyn Material>,
@@ -74,6 +77,12 @@ impl HitResult {
         } else {
             -normal.clone()
         };
+    }
+    pub fn get_sphere_uv(p: Vec3, u: &mut f64, v: &mut f64) {
+        let phi = p.z.atan2(p.x);
+        let theta = p.y.asin();
+        *u = 1.0 - (phi + PI) / (2.0 * PI);
+        *v = (theta + PI / 2.0) / PI;
     }
 }
 
@@ -118,13 +127,20 @@ impl Hitable for Sphere {
             if root > t_min && root < t_max {
                 let t = root;
                 let p = ra.at(t);
+
                 let mut normal = (p.clone() - self.center.clone()) / self.radius;
+                let mut fu = 0.0;
+                let mut fv = 0.0;
+
+                HitResult::get_sphere_uv(normal.clone(), &mut fu, &mut fv);
                 let mut front_face = false;
                 HitResult::set_face_normal(ra, &mut normal, &mut front_face);
                 let mat_ptr = self.mat_ptr.clone();
                 return Option::Some(HitResult {
                     t,
                     p,
+                    fu,
+                    fv,
                     normal,
                     front_face,
                     mat_ptr,
@@ -135,12 +151,19 @@ impl Hitable for Sphere {
                 let t = root;
                 let p = ra.at(t);
                 let mut normal = (p.clone() - self.center.clone()) / self.radius;
+
+                let mut fu = 0.0;
+                let mut fv = 0.0;
+                HitResult::get_sphere_uv(normal.clone(), &mut fu, &mut fv);
+
                 let mut front_face = false;
                 HitResult::set_face_normal(ra, &mut normal, &mut front_face);
                 let mat_ptr = self.mat_ptr.clone();
                 return Option::Some(HitResult {
                     t,
                     p,
+                    fu,
+                    fv,
                     normal,
                     front_face,
                     mat_ptr,
@@ -157,7 +180,7 @@ impl Hitable for Sphere {
     }
 }
 
-pub struct Triangle {
+/*pub struct Triangle {
     pub v0: Vec3,
     pub v1: Vec3,
     pub v2: Vec3,
@@ -210,7 +233,7 @@ impl Hitable for Triangle {
     }
 }
 
-/*pub struct Cube {
+pub struct Cube {
     pub hitlist: Vec<Arc<dyn Hitable>>,
     pub bbox: AABB,
     /*pub v0: Vec3,
@@ -358,6 +381,8 @@ impl Hitable for XyRect {
         }
         let x = ra.origin.x + t * ra.direction.x;
         let y = ra.origin.y + t * ra.direction.y;
+        let fu = (x - self.x0) / (self.x1 - self.x0);
+        let fv = (y - self.y0) / (self.y1 - self.y0);
         if x < self.x0 || x > self.x1 || y < self.y0 || y > self.y1 {
             return None;
         }
@@ -367,6 +392,8 @@ impl Hitable for XyRect {
         Some(HitResult {
             t,
             p: ra.at(t),
+            fu,
+            fv,
             normal,
             front_face,
             mat_ptr: self.mat_ptr.clone(),
@@ -397,6 +424,8 @@ impl Hitable for XzRect {
         }
         let x = ra.origin.x + t * ra.direction.x;
         let z = ra.origin.z + t * ra.direction.z;
+        let fu = (x - self.x0) / (self.x1 - self.x0);
+        let fv = (z - self.z0) / (self.z1 - self.z0);
         if x < self.x0 || x > self.x1 || z < self.z0 || z > self.z1 {
             return None;
         }
@@ -406,6 +435,8 @@ impl Hitable for XzRect {
         Some(HitResult {
             t,
             p: ra.at(t),
+            fu,
+            fv,
             normal,
             front_face,
             mat_ptr: self.mat_ptr.clone(),
@@ -435,6 +466,8 @@ impl Hitable for YzRect {
         }
         let z = ra.origin.z + t * ra.direction.z;
         let y = ra.origin.y + t * ra.direction.y;
+        let fu = (y - self.y0) / (self.y1 - self.y0);
+        let fv = (z - self.z0) / (self.z1 - self.z0);
         if z < self.z0 || z > self.z1 || y < self.y0 || y > self.y1 {
             return None;
         }
@@ -444,6 +477,8 @@ impl Hitable for YzRect {
         Some(HitResult {
             t,
             p: ra.at(t),
+            fu,
+            fv,
             normal,
             front_face,
             mat_ptr: self.mat_ptr.clone(),
@@ -643,6 +678,47 @@ impl Hitable for RotateY {
     }
     fn bounding_box(&self) -> Option<AABB> {
         self.bbox.clone()
+    }
+}
+
+pub struct ConstantMedium {
+    pub density: f64,
+    pub boundary: Arc<dyn Hitable>,
+    pub phase_function: Arc<dyn Material>,
+}
+impl Hitable for ConstantMedium {
+    fn hit(&self, ra: &Ray, t_min: f64, t_max: f64) -> Option<HitResult> {
+        if let Some(mut rec1) = self.boundary.hit(&ra, -INFINITY, INFINITY) {
+            if let Some(mut rec2) = self.boundary.hit(&ra, rec1.t + 0.0001, INFINITY) {
+                rec1.t = rec1.t.max(t_min);
+                rec2.t = rec2.t.min(t_max);
+                if rec1.t >= rec2.t {
+                    return None;
+                }
+                rec1.t = rec1.t.max(0.0);
+
+                let ray_length = ra.direction.length();
+                let distance_inside_boundary = (rec2.t - rec1.t) * ray_length;
+                let hit_distance = (-1.0 / self.density) * random_double().ln();
+                if hit_distance > distance_inside_boundary {
+                    return None;
+                }
+                let t = rec1.t + hit_distance / ray_length;
+                return Some(HitResult {
+                    t,
+                    p: ra.at(t),
+                    fu: 0.0,
+                    fv: 0.0,
+                    normal: Vec3::new(1.0, 0.0, 0.0),
+                    front_face: true,
+                    mat_ptr: self.phase_function.clone(),
+                });
+            }
+        }
+        None
+    }
+    fn bounding_box(&self) -> Option<AABB> {
+        self.boundary.bounding_box()
     }
 }
 

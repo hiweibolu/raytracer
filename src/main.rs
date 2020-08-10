@@ -1,13 +1,12 @@
 mod camera;
-#[allow(clippy::borrowed_box)]
 mod hit;
 mod material;
+mod perlin;
 mod random;
 mod ray;
 mod texture;
 #[allow(clippy::float_cmp)]
 mod vec3;
-#[allow(clippy::borrowed_box)]
 mod world;
 use core::f64::INFINITY;
 use image::{ImageBuffer, RgbImage};
@@ -49,7 +48,7 @@ fn ray_color(ra: Ray, wor: &World, depth: i32) -> Vec3 {
     Vec3::zero()
     /*let unit = ra.direction.unit();
     let t = (unit.y + 1.0) * 0.5;
-    Vec3::lerp(Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.0, 0.0, 0.0), t)*/
+    Vec3::lerp(Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.5, 0.5, 0.5), t)*/
 }
 
 fn cornell_box() -> World {
@@ -133,12 +132,23 @@ fn cornell_box() -> World {
         offset: Vec3::new(265.0, 0.0, 295.0),
         ptr: cube1,
     });
+    cube1 = Arc::new(ConstantMedium {
+        density: 0.01,
+        boundary: cube1,
+        phase_function: Arc::new(Isotropic {
+            albedo: Arc::new(ConstantTexture {
+                color: Vec3::new(0.0, 0.0, 0.0),
+            }),
+        }),
+    });
     hitlist.push(cube1);
 
     let mut cube2: Arc<dyn Hitable> = Arc::new(Cube::new(
         Vec3::new(0.0, 0.0, 0.0),
         Vec3::new(165.0, 165.0, 165.0),
-        white,
+        Arc::new(Lambertian {
+            albedo: Arc::new(ImageTexture::new()),
+        }), //white,
     ));
     cube2 = Arc::new(RotateY::new(cube2, -18.0));
     cube2 = Arc::new(Translate {
@@ -148,12 +158,134 @@ fn cornell_box() -> World {
     hitlist.push(cube2);
     World::new(hitlist)
 }
+fn final_scene() -> World {
+    let light = Arc::new(DiffuseLight {
+        emit: Arc::new(ConstantTexture {
+            color: Vec3::new(15.0, 15.0, 15.0),
+        }),
+    });
+    let ground = Arc::new(Lambertian {
+        albedo: Arc::new(ConstantTexture {
+            color: Vec3::new(0.48, 0.83, 0.53),
+        }),
+    });
+    let mut hitlist: Vec<Arc<dyn Hitable>> = vec![Arc::new(XzRect {
+        x0: 123.0,
+        x1: 423.0,
+        z0: 147.0,
+        z1: 412.0,
+        k: 554.0,
+        mat_ptr: light,
+    })];
 
-fn work(cam: &Camera) {
+    for i in 0..20 {
+        for j in 0..20 {
+            let w = 100.0;
+            let x0 = -1000.0 + (i as f64) * w;
+            let z0 = -1000.0 + (j as f64) * w;
+            let y0 = 0.0;
+            let x1 = x0 + w;
+            let y1 = random_double_range(1.0, 101.0);
+            let z1 = z0 + w;
+            hitlist.push(Arc::new(Cube::new(
+                Vec3::new(x0, y0, z0),
+                Vec3::new(x1, y1, z1),
+                ground.clone(),
+            )));
+        }
+    }
+
+    hitlist.push(Arc::new(Sphere {
+        center: Vec3::new(260.0, 150.0, 45.0),
+        radius: 50.0,
+        mat_ptr: Arc::new(Dielectric { ref_idx: 1.5 }),
+    }));
+    hitlist.push(Arc::new(Sphere {
+        center: Vec3::new(0.0, 150.0, 145.0),
+        radius: 50.0,
+        mat_ptr: Arc::new(Metal {
+            albedo: Arc::new(ConstantTexture {
+                color: Vec3::new(0.8, 0.8, 0.9),
+            }),
+            fuzzy: 10.0,
+        }),
+    }));
+    hitlist.push(Arc::new(Sphere {
+        center: Vec3::new(220.0, 280.0, 300.0),
+        radius: 80.0,
+        mat_ptr: Arc::new(Lambertian {
+            albedo: Arc::new(NoiseTexture {
+                noise: Perlin::new(),
+                scale: 0.1,
+            }),
+        }),
+    }));
+    hitlist.push(Arc::new(Sphere {
+        center: Vec3::new(400.0, 200.0, 400.0),
+        radius: 100.0,
+        mat_ptr: Arc::new(Lambertian {
+            albedo: Arc::new(ImageTexture::new()),
+        }),
+    }));
+    hitlist.push(Arc::new(Sphere {
+        center: Vec3::new(400.0, 200.0, 400.0),
+        radius: 100.0,
+        mat_ptr: Arc::new(Lambertian {
+            albedo: Arc::new(ImageTexture::new()),
+        }),
+    }));
+    let mut cube1: Arc<dyn Hitable> = Arc::new(Sphere {
+        center: Vec3::new(400.0, 400.0, 200.0),
+        radius: 50.0,
+        mat_ptr: Arc::new(Lambertian {
+            albedo: Arc::new(ConstantTexture {
+                color: Vec3::new(0.8, 0.2, 0.9),
+            }),
+        }),
+    });
+    cube1 = Arc::new(ConstantMedium {
+        density: 0.01,
+        boundary: cube1,
+        phase_function: Arc::new(Isotropic {
+            albedo: Arc::new(ConstantTexture {
+                color: Vec3::new(0.2, 0.4, 0.9),
+            }),
+        }),
+    });
+    hitlist.push(cube1);
+
+    World::new(hitlist)
+}
+fn scene() -> World {
+    let hitlist: Vec<Arc<dyn Hitable>> = vec![
+        Arc::new(Sphere {
+            center: Vec3::new(0.0, -1000.0, 0.0),
+            radius: 1000.0,
+            mat_ptr: Arc::new(Lambertian {
+                albedo: Arc::new(NoiseTexture {
+                    noise: Perlin::new(),
+                    scale: 4.0,
+                }),
+            }),
+        }),
+        Arc::new(Sphere {
+            center: Vec3::new(0.0, 2.0, 0.0),
+            radius: 2.0,
+            mat_ptr: Arc::new(Lambertian {
+                albedo: Arc::new(NoiseTexture {
+                    noise: Perlin::new(),
+                    scale: 4.0,
+                }),
+            }),
+        }),
+    ];
+    World::new(hitlist)
+}
+
+fn work(cam: Camera, wor: World) {
     let mut img: RgbImage = ImageBuffer::new(cam.width, cam.height);
     let bar = ProgressBar::new(cam.width as u64);
 
-    let wor = cornell_box(); //oneweekend_world();
     let length_per_step = [
         1.0 / ((ANTIALIASING + 1) as f64),
         1.0 / ((ANTIALIASING + 1) as f64),
@@ -189,14 +321,35 @@ fn work(cam: &Camera) {
 }
 
 fn main() {
-    let cam = Camera::new(
+    /*let cam = Camera::new(
         40f64.to_radians(),
         1.0,
-        WIDTH,
+        600,
         Vec3::new(278.0, 278.0, -800.0),
         Vec3::new(278.0, 278.0, 0.0),
         Vec3::new(0.0, 1.0, 0.0),
         0.0,
     );
-    work(&cam);
+    let wor = cornell_box();*/
+    let cam = Camera::new(
+        40f64.to_radians(),
+        1.0,
+        800,
+        Vec3::new(478.0, 278.0, -600.0),
+        Vec3::new(278.0, 278.0, 0.0),
+        Vec3::new(0.0, 1.0, 0.0),
+        0.0,
+    );
+    let wor = final_scene();
+    /*let cam = Camera::new(
+        20f64.to_radians(),
+        1.0,
+        800,
+        Vec3::new(13.0, 2.0, 3.0),
+        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::new(0.0, 1.0, 0.0),
+        0.0,
+    );
+    let wor = scene();*/
+    work(cam, wor);
 }

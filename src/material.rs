@@ -27,7 +27,8 @@ impl Material for Lambertian {
     fn scatter(&self, _ray_in: &Ray, hit_record: &HitResult) -> Option<(Vec3, Ray)> {
         let direction = hit_record.normal.clone() + Vec3::random_unit();
         Some((
-            self.albedo.value(0.0, 0.0, hit_record.p.clone()),
+            self.albedo
+                .value(hit_record.fu, hit_record.fv, hit_record.p.clone()),
             Ray {
                 origin: hit_record.p.clone(),
                 direction,
@@ -51,7 +52,11 @@ impl Material for Metal {
         if scattered.direction.clone() * hit_record.normal.clone() <= 0.0 {
             return None;
         }
-        Some((self.albedo.value(0.0, 0.0, hit_record.p.clone()), scattered))
+        Some((
+            self.albedo
+                .value(hit_record.fu, hit_record.fv, hit_record.p.clone()),
+            scattered,
+        ))
     }
 }
 
@@ -99,6 +104,23 @@ pub struct DiffuseLight {
 impl Material for DiffuseLight {
     fn emitted(&self, u: f64, v: f64, p: Vec3) -> Vec3 {
         self.emit.value(u, v, p)
+    }
+}
+
+pub struct Isotropic {
+    pub albedo: Arc<dyn Texture>,
+}
+impl Material for Isotropic {
+    fn scatter(&self, _ray_in: &Ray, hit_record: &HitResult) -> Option<(Vec3, Ray)> {
+        let direction = Vec3::random_in_unit_sphere();
+        Some((
+            self.albedo
+                .value(hit_record.fu, hit_record.fv, hit_record.p.clone()),
+            Ray {
+                origin: hit_record.p.clone(),
+                direction,
+            },
+        ))
     }
 }
 
