@@ -63,6 +63,11 @@ impl ImageTexture {
         }
     }
 }
+impl Default for ImageTexture {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl Texture for ImageTexture {
     fn value(&self, u: f64, v: f64, _p: Vec3) -> Vec3 {
         //Vec3::ones() * 0.5 * (1.0 + self.noise.noise(p * self.scale))
@@ -82,18 +87,5 @@ impl Texture for ImageTexture {
             color_scale * pixel[1] as f64,
             color_scale * pixel[2] as f64,
         )
-    }
-}
-
-pub fn random_texture() -> Arc<dyn Texture> {
-    let choose_texture = (2.0 * random_double()).floor() as i32;
-    match choose_texture {
-        0 => Arc::new(ConstantTexture {
-            color: Vec3::random(),
-        }),
-        _ => Arc::new(CheckerTexture {
-            odd: random_texture(),
-            even: random_texture(),
-        }),
     }
 }

@@ -1,6 +1,8 @@
 mod camera;
 mod hit;
 mod material;
+mod onb;
+mod pdf;
 mod perlin;
 mod random;
 mod ray;
@@ -16,6 +18,8 @@ use std::sync::Arc;
 pub use camera::Camera;
 pub use hit::*;
 pub use material::*;
+pub use onb::ONB;
+pub use pdf::*;
 pub use random::*;
 pub use ray::Ray;
 pub use texture::*;
@@ -23,7 +27,7 @@ pub use vec3::Vec3;
 pub use world::World;
 
 const WIDTH: u32 = 600;
-const ANTIALIASING: i32 = 10;
+const ANTIALIASING: i32 = 20;
 const MAX_DEPTH: i32 = 50;
 
 fn ray_color(ra: Ray, wor: &World, depth: i32) -> Vec3 {
@@ -31,16 +35,57 @@ fn ray_color(ra: Ray, wor: &World, depth: i32) -> Vec3 {
         return Vec3::zero();
     }
 
-    let opt: Option<HitResult> = wor.hit(&ra, 0.001, INFINITY);
-    if let Option::Some(hit_result) = opt {
-        let option: Option<(Vec3, Ray)> = hit_result.mat_ptr.scatter(&ra, &hit_result);
-        let emitted = hit_result.mat_ptr.emitted(0.0, 0.0, hit_result.p.clone());
-        if let Option::Some(scatter_result) = option {
-            return emitted
-                + Vec3::elemul(
+    if let Some(hit_result) = wor.hit(&ra, 0.001, INFINITY) {
+        let emitted = hit_result
+            .mat_ptr
+            .emitted(&hit_result, 0.0, 0.0, hit_result.p.clone());
+        if let Some(scatter_result) = hit_result.mat_ptr.scatter(&ra, &hit_result) {
+            if scatter_result.3 {
+                return Vec3::elemul(
                     scatter_result.0,
                     ray_color(scatter_result.1, &wor, depth - 1),
                 );
+            }
+
+            let light = Arc::new(DiffuseLight {
+                emit: Arc::new(ConstantTexture {
+                    color: Vec3::new(15.0, 15.0, 15.0),
+                }),
+            });
+            let light_shape: Arc<dyn Hitable> = Arc::new(XzRect {
+                x0: 213.0,
+                x1: 343.0,
+                z0: 227.0,
+                z1: 332.0,
+                k: 554.0,
+                mat_ptr: light,
+            });
+            let p0 = HitablePdf {
+                origin: hit_result.p.clone(),
+                ptr: light_shape,
+            };
+            let p1 = CosinePdf::new(hit_result.normal.clone());
+            let p = MixturePdf {
+                p0: Arc::new(p0),
+                p1: Arc::new(p1),
+                d0: 0.5,
+                d1: 0.5,
+            };
+
+            let scattered = Ray {
+                origin: hit_result.p.clone(),
+                direction: p.generate(),
+            };
+            let pdf_value = p.value(scattered.direction.clone());
+
+            return emitted
+                + Vec3::elemul(
+                    scatter_result.0
+                        * hit_result
+                            .mat_ptr
+                            .scattering_pdf(&ra, &hit_result, &scattered),
+                    ray_color(scattered, &wor, depth - 1),
+                ) / pdf_value;
         }
         return emitted;
     }
@@ -48,7 +93,7 @@ fn ray_color(ra: Ray, wor: &World, depth: i32) -> Vec3 {
     Vec3::zero()
     /*let unit = ra.direction.unit();
     let t = (unit.y + 1.0) * 0.5;
-    Vec3::lerp(Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.5, 0.5, 0.5), t)*/
+    Vec3::lerp(Vec3::new(0.4, 0.6, 0.8), Vec3::new(0.3, 0.5, 0.5), t)*/
 }
 
 fn cornell_box() -> World {
@@ -67,6 +112,13 @@ fn cornell_box() -> World {
             color: Vec3::new(0.12, 0.45, 0.15),
         }),
     });
+    let metal = Arc::new(Metal {
+        albedo: Arc::new(ConstantTexture {
+            color: Vec3::new(0.8, 0.85, 0.88),
+        }),
+        fuzzy: 0.0,
+    });
+    let glass = Arc::new(Dielectric { ref_idx: 1.5 });
     let light = Arc::new(DiffuseLight {
         emit: Arc::new(ConstantTexture {
             color: Vec3::new(15.0, 15.0, 15.0),
@@ -125,14 +177,14 @@ fn cornell_box() -> World {
     let mut cube1: Arc<dyn Hitable> = Arc::new(Cube::new(
         Vec3::new(0.0, 0.0, 0.0),
         Vec3::new(165.0, 330.0, 165.0),
-        white.clone(),
+        metal,
     ));
     cube1 = Arc::new(RotateY::new(cube1, 15.0));
     cube1 = Arc::new(Translate {
         offset: Vec3::new(265.0, 0.0, 295.0),
         ptr: cube1,
     });
-    cube1 = Arc::new(ConstantMedium {
+    /*cube1 = Arc::new(ConstantMedium {
         density: 0.01,
         boundary: cube1,
         phase_function: Arc::new(Isotropic {
@@ -140,25 +192,29 @@ fn cornell_box() -> World {
                 color: Vec3::new(0.0, 0.0, 0.0),
             }),
         }),
-    });
+    });*/
     hitlist.push(cube1);
 
-    let mut cube2: Arc<dyn Hitable> = Arc::new(Cube::new(
+    /*let mut cube2: Arc<dyn Hitable> = Arc::new(Cube::new(
         Vec3::new(0.0, 0.0, 0.0),
         Vec3::new(165.0, 165.0, 165.0),
-        Arc::new(Lambertian {
-            albedo: Arc::new(ImageTexture::new()),
-        }), //white,
+        white,
     ));
     cube2 = Arc::new(RotateY::new(cube2, -18.0));
     cube2 = Arc::new(Translate {
         offset: Vec3::new(130.0, 0.0, 65.0),
         ptr: cube2,
     });
-    hitlist.push(cube2);
+    hitlist.push(cube2);*/
+    hitlist.push(Arc::new(Sphere {
+        center: Vec3::new(190.0, 90.0, 190.0),
+        radius: 90.0,
+        mat_ptr: glass, //Arc::new(Dielectric { ref_idx: 1.5 }),
+    }));
+
     World::new(hitlist)
 }
-fn final_scene() -> World {
+/*fn final_scene() -> World {
     let light = Arc::new(DiffuseLight {
         emit: Arc::new(ConstantTexture {
             color: Vec3::new(15.0, 15.0, 15.0),
@@ -280,7 +336,7 @@ fn scene() -> World {
         }),
     ];
     World::new(hitlist)
-}
+}*/
 
 fn work(cam: Camera, wor: World) {
     let mut img: RgbImage = ImageBuffer::new(cam.width, cam.height);
@@ -301,10 +357,10 @@ fn work(cam: Camera, wor: World) {
                     let v =
                         ((y as f64) + (y_step as f64) * length_per_step[1]) / (cam.height as f64);
                     let ra = cam.get_ray(u, v);
-                    let co = ray_color(ra, &wor, MAX_DEPTH);
-                    /*let co = ray_color(ra, &wor, MAX_DEPTH)
-                    .min(Vec3::ones())
-                    .max(Vec3::zero());*/
+                    //let co = ray_color(ra, &wor, MAX_DEPTH);
+                    let co = ray_color(ra, &wor, MAX_DEPTH)
+                        .min(Vec3::ones())
+                        .max(Vec3::zero());
                     color += co / (sample_number as f64);
                 }
             }
@@ -321,30 +377,30 @@ fn work(cam: Camera, wor: World) {
 }
 
 fn main() {
-    /*let cam = Camera::new(
+    let cam = Camera::new(
         40f64.to_radians(),
         1.0,
-        600,
+        WIDTH,
         Vec3::new(278.0, 278.0, -800.0),
         Vec3::new(278.0, 278.0, 0.0),
         Vec3::new(0.0, 1.0, 0.0),
         0.0,
     );
-    let wor = cornell_box();*/
-    let cam = Camera::new(
+    let wor = cornell_box();
+    /*let cam = Camera::new(
         40f64.to_radians(),
         1.0,
-        800,
+        WIDTH,
         Vec3::new(478.0, 278.0, -600.0),
         Vec3::new(278.0, 278.0, 0.0),
         Vec3::new(0.0, 1.0, 0.0),
         0.0,
     );
-    let wor = final_scene();
+    let wor = final_scene();*/
     /*let cam = Camera::new(
         20f64.to_radians(),
         1.0,
-        800,
+        WIDTH,
         Vec3::new(13.0, 2.0, 3.0),
         Vec3::new(0.0, 0.0, 0.0),
         Vec3::new(0.0, 1.0, 0.0),

@@ -268,6 +268,23 @@ impl Vec3 {
             }
         }
     }
+    pub fn random_in_hemisphere(normal: Self) -> Self {
+        let p = Self::random_unit();
+        if p.clone() * normal > 0.0 {
+            p
+        } else {
+            -p
+        }
+    }
+    pub fn random_cosine_direction() -> Self {
+        let r1 = random_double();
+        let r2 = random_double();
+        let z = (1.0 - r2).sqrt();
+        let phi = 2.0 * PI * r1;
+        let x = phi.cos() * r2.sqrt();
+        let y = phi.sin() * r2.sqrt();
+        Self::new(x, y, z)
+    }
     pub fn reflect(&self, normal: Self) -> Self {
         self.clone() - normal.clone() * (self.clone() * normal) * 2.0
     }

@@ -91,6 +91,12 @@ pub trait Hitable {
     fn bounding_box(&self) -> Option<AABB> {
         None
     }
+    fn pdf_value(&self, _o: Vec3, _v: Vec3) -> f64 {
+        0.0
+    }
+    fn random(&self, _o: Vec3) -> Vec3 {
+        Vec3::new(1.0, 0.0, 0.0)
+    }
 }
 
 pub fn hit(hitlist: &[Arc<dyn Hitable>], ra: &Ray, t_min: f64, t_max: f64) -> Option<HitResult> {
@@ -180,190 +186,6 @@ impl Hitable for Sphere {
     }
 }
 
-/*pub struct Triangle {
-    pub v0: Vec3,
-    pub v1: Vec3,
-    pub v2: Vec3,
-    pub mat_ptr: Arc<dyn Material>,
-}
-impl Hitable for Triangle {
-    fn hit(&self, ra: &Ray, t_min: f64, t_max: f64) -> Option<HitResult> {
-        let e1 = self.v1.clone() - self.v0.clone();
-        let e2 = self.v2.clone() - self.v0.clone();
-        let phi = Vec3::cross(ra.direction.clone(), e2.clone());
-        let mut det = e1.clone() * phi.clone();
-        let temp = if det > 0.0 {
-            ra.origin.clone() - self.v0.clone()
-        } else {
-            det = -det;
-            self.v0.clone() - ra.origin.clone()
-        };
-        if det < 0.0 {
-            return None;
-        }
-        let u = temp.clone() * phi;
-        if u < 0.0 || u > det {
-            return None;
-        }
-        let qq = Vec3::cross(temp, e1.clone());
-        let v = ra.direction.clone() * qq.clone();
-        if v < 0.0 || u + v > det {
-            return None;
-        }
-        let mut t = e2.clone() * qq;
-        let invdet = 1.0 / det;
-        t *= invdet;
-        if t < t_min || t > t_max {
-            return None;
-        }
-        /*u *= invdet;
-        v *= invdet;*/
-        let p = ra.at(t);
-        let mut normal = Vec3::cross(e1, e2).unit();
-        let mut front_face = false;
-        HitResult::set_face_normal(ra, &mut normal, &mut front_face);
-        let mat_ptr = self.mat_ptr.clone();
-        Some(HitResult {
-            t,
-            p,
-            normal,
-            front_face,
-            mat_ptr,
-        })
-    }
-}
-
-pub struct Cube {
-    pub hitlist: Vec<Arc<dyn Hitable>>,
-    pub bbox: AABB,
-    /*pub v0: Vec3,
-    pub x_diff: Vec3,
-    pub y_diff: Vec3,
-    pub z_diff: Vec3,
-    pub mat_ptr: Arc<dyn Material>,*/
-}
-impl Cube {
-    pub fn build(
-        v0: Vec3,
-        x_diff: Vec3,
-        y_diff: Vec3,
-        z_diff: Vec3,
-        mat_ptr: Arc<dyn Material>,
-    ) -> Self {
-        let v1 = v0.clone() + x_diff.clone() + y_diff.clone() + z_diff.clone();
-        let mut min = v0.clone();
-        min = min.min(v0.clone() + x_diff.clone());
-        min = min.min(v0.clone() + y_diff.clone());
-        min = min.min(v0.clone() + z_diff.clone());
-        min = min.min(v0.clone() + x_diff.clone() + y_diff.clone());
-        min = min.min(v0.clone() + y_diff.clone() + z_diff.clone());
-        min = min.min(v0.clone() + z_diff.clone() + x_diff.clone());
-        min = min.min(v0.clone() + x_diff.clone() + y_diff.clone() + z_diff.clone());
-        let mut max = v0.clone();
-        max = max.max(v0.clone() + x_diff.clone());
-        max = max.max(v0.clone() + y_diff.clone());
-        max = max.max(v0.clone() + z_diff.clone());
-        max = max.max(v0.clone() + x_diff.clone() + y_diff.clone());
-        max = max.max(v0.clone() + y_diff.clone() + z_diff.clone());
-        max = max.max(v0.clone() + z_diff.clone() + x_diff.clone());
-        max = max.max(v0.clone() + x_diff.clone() + y_diff.clone() + z_diff.clone());
-        Self {
-            hitlist: vec![
-                Arc::new(Triangle {
-                    v0: v0.clone(),
-                    v1: v0.clone() + x_diff.clone(),
-                    v2: v0.clone() + y_diff.clone(),
-                    mat_ptr: mat_ptr.clone(),
-                }),
-                Arc::new(Triangle {
-                    v0: v0.clone() + x_diff.clone() + y_diff.clone(),
-                    v1: v0.clone() + y_diff.clone(),
-                    v2: v0.clone() + x_diff.clone(),
-                    mat_ptr: mat_ptr.clone(),
-                }),
-                Arc::new(Triangle {
-                    v0: v0.clone(),
-                    v1: v0.clone() + y_diff.clone(),
-                    v2: v0.clone() + z_diff.clone(),
-                    mat_ptr: mat_ptr.clone(),
-                }),
-                Arc::new(Triangle {
-                    v0: v0.clone() + y_diff.clone() + z_diff.clone(),
-                    v1: v0.clone() + z_diff.clone(),
-                    v2: v0.clone() + y_diff.clone(),
-                    mat_ptr: mat_ptr.clone(),
-                }),
-                Arc::new(Triangle {
-                    v0: v0.clone(),
-                    v1: v0.clone() + z_diff.clone(),
-                    v2: v0.clone() + x_diff.clone(),
-                    mat_ptr: mat_ptr.clone(),
-                }),
-                Arc::new(Triangle {
-                    v0: v0.clone() + x_diff.clone() + z_diff.clone(),
-                    v1: v0.clone() + x_diff.clone(),
-                    v2: v0 + z_diff.clone(),
-                    mat_ptr: mat_ptr.clone(),
-                }),
-                Arc::new(Triangle {
-                    v0: v1.clone(),
-                    v1: v1.clone() - y_diff.clone(),
-                    v2: v1.clone() - x_diff.clone(),
-                    mat_ptr: mat_ptr.clone(),
-                }),
-                Arc::new(Triangle {
-                    v0: v1.clone() - x_diff.clone() - y_diff.clone(),
-                    v1: v1.clone() - x_diff.clone(),
-                    v2: v1.clone() - y_diff.clone(),
-                    mat_ptr: mat_ptr.clone(),
-                }),
-                Arc::new(Triangle {
-                    v0: v1.clone(),
-                    v1: v1.clone() - z_diff.clone(),
-                    v2: v1.clone() - y_diff.clone(),
-                    mat_ptr: mat_ptr.clone(),
-                }),
-                Arc::new(Triangle {
-                    v0: v1.clone() - y_diff.clone() - z_diff.clone(),
-                    v1: v1.clone() - y_diff,
-                    v2: v1.clone() - z_diff.clone(),
-                    mat_ptr: mat_ptr.clone(),
-                }),
-                Arc::new(Triangle {
-                    v0: v1.clone(),
-                    v1: v1.clone() - x_diff.clone(),
-                    v2: v1.clone() - z_diff.clone(),
-                    mat_ptr: mat_ptr.clone(),
-                }),
-                Arc::new(Triangle {
-                    v0: v1.clone() - x_diff.clone() - z_diff.clone(),
-                    v1: v1.clone() - z_diff,
-                    v2: v1 - x_diff,
-                    mat_ptr,
-                }),
-            ],
-            bbox: AABB { min, max },
-        }
-    }
-    pub fn new(center: Vec3, size: f64, mat_ptr: Arc<dyn Material>) -> Self {
-        Self::build(
-            center - Vec3::new(size, size, size),
-            Vec3::new(size * 2.0, 0.0, 0.0),
-            Vec3::new(0.0, size * 2.0, 0.0),
-            Vec3::new(0.0, 0.0, size * 2.0),
-            mat_ptr,
-        )
-    }
-}
-impl Hitable for Cube {
-    fn hit(&self, ra: &Ray, t_min: f64, t_max: f64) -> Option<HitResult> {
-        hit(&self.hitlist, &ra, t_min, t_max)
-    }
-    fn bounding_box(&self) -> Option<AABB> {
-        Some(self.bbox.clone())
-    }
-}*/
-
 pub struct XyRect {
     pub x0: f64,
     pub x1: f64,
@@ -429,7 +251,7 @@ impl Hitable for XzRect {
         if x < self.x0 || x > self.x1 || z < self.z0 || z > self.z1 {
             return None;
         }
-        let mut normal = Vec3::new(0.0, 1.0, 0.0);
+        let mut normal = Vec3::new(0.0, -1.0, 0.0);
         let mut front_face = false;
         HitResult::set_face_normal(ra, &mut normal, &mut front_face);
         Some(HitResult {
@@ -447,6 +269,30 @@ impl Hitable for XzRect {
             min: Vec3::new(self.x0, self.k - 0.0001, self.z0),
             max: Vec3::new(self.x1, self.k + 0.0001, self.z1),
         })
+    }
+    fn pdf_value(&self, origin: Vec3, v: Vec3) -> f64 {
+        if let Some(rec) = self.hit(
+            &Ray {
+                origin,
+                direction: v.clone(),
+            },
+            0.001,
+            INFINITY,
+        ) {
+            let area = (self.x1 - self.x0) * (self.z1 - self.z0);
+            let distance_squared = rec.t * rec.t * v.squared_length();
+            let cosine = (v.clone() * rec.normal).abs() / v.length();
+            return distance_squared / (cosine * area);
+        }
+        0.0
+    }
+    fn random(&self, origin: Vec3) -> Vec3 {
+        let random_point = Vec3::new(
+            random_double_range(self.x0, self.x1),
+            self.k,
+            random_double_range(self.z0, self.z1),
+        );
+        random_point - origin
     }
 }
 pub struct YzRect {
@@ -719,22 +565,5 @@ impl Hitable for ConstantMedium {
     }
     fn bounding_box(&self) -> Option<AABB> {
         self.boundary.bounding_box()
-    }
-}
-
-pub fn random_hitable(center: Vec3, size: f64) -> Arc<dyn Hitable> {
-    let choose_hitable = (2.0 * random_double()).floor() as i32;
-    match choose_hitable {
-        0 => Arc::new(Sphere {
-            center,
-            radius: size,
-            mat_ptr: random_material(),
-        }),
-        _ => Arc::new(Cube::new(
-            center.clone() - Vec3::new(size, size, size),
-            center + Vec3::new(size, size, size),
-            random_material(),
-        )),
-        //_ => Arc::new(Cube::new(center, size, random_material())),
     }
 }

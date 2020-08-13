@@ -1,3 +1,5 @@
+#![allow(clippy::needless_range_loop)]
+
 pub use crate::random::*;
 pub use crate::vec3::Vec3;
 
@@ -32,7 +34,6 @@ impl Default for Perlin {
     }
 }
 
-#[allow(clippy::needless_range_loop)]
 impl Perlin {
     pub fn permute(p: &mut [usize; POINTCOUNT]) {
         for i in 0..POINTCOUNT {
