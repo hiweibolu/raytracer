@@ -171,7 +171,7 @@ fn cornell_box() -> World {
             y0: 0.0,
             y1: 555.0,
             k: 555.0,
-            mat_ptr: white.clone(),
+            mat_ptr: white,
         }),
     ];
     let mut cube1: Arc<dyn Hitable> = Arc::new(Cube::new(
